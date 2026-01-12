@@ -548,21 +548,38 @@ const backends = {
         let customUrl = headers['x-custom-url'];
         if (!customUrl) throw new Error('Custom URL required');
         
-        // Append /images/generations if not already present
+        // Default to chat/completions
         if (!customUrl.includes('/images/generations') && !customUrl.includes('/chat/completions')) {
-            customUrl = customUrl.replace(/\/$/, '') + '/images/generations';
+            customUrl = customUrl.replace(/\/$/, '') + '/chat/completions';
         }
         
         const apiKey = headers.authorization?.replace('Bearer ', '');
         const reqHeaders = { 'Content-Type': 'application/json' };
         if (apiKey) reqHeaders['Authorization'] = `Bearer ${apiKey}`;
         
+        // Convert to chat completions format
+        const chatBody = {
+            model: body.model || 'gpt-4o',
+            messages: [{ role: 'user', content: body.prompt }]
+        };
+        
         const res = await fetch(customUrl, {
             method: 'POST',
             headers: reqHeaders,
-            body: JSON.stringify(body)
+            body: JSON.stringify(chatBody)
         });
-        return await res.json();
+        const data = await res.json();
+        
+        // Extract image URLs from response
+        const content = data.choices?.[0]?.message?.content || '';
+        const urls = content.match(/https?:\/\/[^\s\)]+\.(png|jpg|jpeg|webp|gif)/gi) || [];
+        
+        if (urls.length) {
+            return { data: urls.map(url => ({ url })) };
+        }
+        
+        // If no image URLs found, return the text response as error
+        throw new Error(content || JSON.stringify(data));
     }
 };
 
