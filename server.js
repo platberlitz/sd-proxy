@@ -8,7 +8,8 @@ app.use(express.static('public'));
 
 // Data storage
 const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+const MODELS_DIR = path.join(__dirname, 'models');
+[DATA_DIR, MODELS_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d); });
 const getDataFile = (name) => path.join(DATA_DIR, `${name}.json`);
 const loadData = (name, def = []) => { try { return JSON.parse(fs.readFileSync(getDataFile(name))); } catch { return def; } };
 const saveData = (name, data) => fs.writeFileSync(getDataFile(name), JSON.stringify(data, null, 2));
@@ -18,7 +19,12 @@ let history = loadData('history', []);
 let favorites = loadData('favorites', []);
 let folders = loadData('folders', []);
 let presets = loadData('presets', []);
+let templates = loadData('templates', []);
 let costs = loadData('costs', { total: 0, byBackend: {} });
+let currentGeneration = null; // For progress tracking
+
+// SSE clients for progress updates
+let progressClients = [];
 
 // CORS
 app.use((req, res, next) => {
@@ -32,6 +38,40 @@ app.use((req, res, next) => {
 // Serve dashboard
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
+// Progress SSE endpoint
+app.get('/api/progress', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    progressClients.push(res);
+    req.on('close', () => { progressClients = progressClients.filter(c => c !== res); });
+});
+
+function sendProgress(data) {
+    progressClients.forEach(c => c.write(`data: ${JSON.stringify(data)}\n\n`));
+}
+
+// Prompt matrix expansion: [a|b] [c|d] -> 4 prompts
+function expandMatrix(prompt) {
+    const matches = prompt.match(/\[([^\]]+)\]/g);
+    if (!matches) return [prompt];
+    const options = matches.map(m => m.slice(1, -1).split('|'));
+    const combinations = options.reduce((acc, opts) => acc.flatMap(a => opts.map(o => [...a, o])), [[]]);
+    return combinations.map(combo => {
+        let result = prompt;
+        matches.forEach((m, i) => { result = result.replace(m, combo[i]); });
+        return result;
+    });
+}
+
+// Wildcard expansion: {a|b|c} -> random pick
+function expandWildcards(text) {
+    return text.replace(/\{([^}]+)\}/g, (m, p) => {
+        const opts = p.split('|');
+        return opts[Math.floor(Math.random() * opts.length)];
+    });
+}
+
 // Backend handlers
 const backends = {
     async local(body, headers) {
@@ -39,7 +79,7 @@ const backends = {
         const samplerMap = { euler_ancestral: 'Euler a', euler: 'Euler', dpmpp_2m: 'DPM++ 2M', dpmpp_sde: 'DPM++ SDE', ddim: 'DDIM', uni_pc: 'UniPC' };
         
         const payload = {
-            prompt: body.prompt,
+            prompt: expandWildcards(body.prompt),
             negative_prompt: body.negative_prompt || '',
             width: body.width || 512,
             height: body.height || 768,
@@ -53,41 +93,96 @@ const backends = {
             enable_hr: body.hires_fix || false,
             hr_scale: body.hires_scale || 1.5,
             hr_upscaler: body.hires_upscaler || 'Latent',
-            denoising_strength: body.denoising_strength || 0.7
+            denoising_strength: body.denoising_strength || 0.7,
+            tiling: body.tiling || false
         };
         
+        // ControlNet
+        if (body.controlnet) {
+            payload.alwayson_scripts = {
+                controlnet: {
+                    args: [{
+                        enabled: true,
+                        module: body.controlnet.preprocessor || 'none',
+                        model: body.controlnet.model || 'control_v11p_sd15_canny',
+                        weight: body.controlnet.weight || 1,
+                        image: body.controlnet.image,
+                        guidance_start: body.controlnet.guidance_start || 0,
+                        guidance_end: body.controlnet.guidance_end || 1
+                    }]
+                }
+            };
+        }
+        
+        // Regional prompting (via BREAK keyword)
+        if (body.regional_prompts?.length) {
+            payload.prompt = body.regional_prompts.map(r => r.prompt).join(' BREAK ');
+        }
+        
         // Img2Img
-        if (body.init_image) {
+        if (body.init_image && !body.mask) {
             payload.init_images = [body.init_image];
             payload.denoising_strength = body.strength || 0.75;
+            payload.resize_mode = body.resize_mode || 0;
             const res = await fetch(`${url}/sdapi/v1/img2img`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            return { data: (data.images || []).map(b64 => ({ b64_json: b64 })) };
+            return { data: (data.images || []).map(b64 => ({ b64_json: b64 })), info: data.info };
         }
         
         // Inpainting
         if (body.mask) {
             payload.init_images = [body.init_image];
             payload.mask = body.mask;
-            payload.inpainting_fill = body.inpaint_fill || 1;
-            payload.inpaint_full_res = true;
+            payload.inpainting_fill = body.inpaint_fill ?? 1;
+            payload.inpaint_full_res = body.inpaint_full_res ?? true;
+            payload.inpaint_full_res_padding = body.inpaint_padding || 32;
+            payload.denoising_strength = body.strength || 0.75;
             const res = await fetch(`${url}/sdapi/v1/img2img`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            return { data: (data.images || []).map(b64 => ({ b64_json: b64 })) };
+            return { data: (data.images || []).map(b64 => ({ b64_json: b64 })), info: data.info };
         }
         
-        const res = await fetch(`${url}/sdapi/v1/txt2img`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        return { data: (data.images || []).map(b64 => ({ b64_json: b64 })), info: data.info };
+        // Outpainting
+        if (body.outpaint) {
+            payload.init_images = [body.init_image];
+            payload.script_name = 'outpainting mk2';
+            payload.script_args = [body.outpaint.pixels || 128, body.outpaint.direction || 'left,right,up,down'];
+            const res = await fetch(`${url}/sdapi/v1/img2img`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            return { data: (data.images || []).map(b64 => ({ b64_json: b64 })), info: data.info };
+        }
+        
+        // Track progress
+        currentGeneration = { backend: 'local', startTime: Date.now() };
+        const progressInterval = setInterval(async () => {
+            try {
+                const progRes = await fetch(`${url}/sdapi/v1/progress`);
+                const prog = await progRes.json();
+                sendProgress({ type: 'generation', progress: prog.progress, eta: prog.eta_relative, preview: prog.current_image });
+            } catch {}
+        }, 1000);
+        
+        try {
+            const res = await fetch(`${url}/sdapi/v1/txt2img`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            return { data: (data.images || []).map(b64 => ({ b64_json: b64 })), info: data.info };
+        } finally {
+            clearInterval(progressInterval);
+            currentGeneration = null;
+            sendProgress({ type: 'generation', progress: 1, done: true });
+        }
     },
     
     async comfyui(body, headers) {
@@ -259,6 +354,179 @@ app.post('/api/upscale', async (req, res) => {
         res.json({ image: data.image });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// Interrogate/Caption image (BLIP/CLIP)
+app.post('/api/interrogate', async (req, res) => {
+    try {
+        const { image, model } = req.body;
+        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const response = await fetch(`${url}/sdapi/v1/interrogate`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image, model: model || 'clip' })
+        });
+        const data = await response.json();
+        res.json({ caption: data.caption });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get A1111 progress
+app.get('/api/a1111/progress', async (req, res) => {
+    try {
+        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const response = await fetch(`${url}/sdapi/v1/progress`);
+        res.json(await response.json());
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Interrupt generation
+app.post('/api/interrupt', async (req, res) => {
+    try {
+        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        await fetch(`${url}/sdapi/v1/interrupt`, { method: 'POST' });
+        currentGeneration = null;
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get available models from A1111
+app.get('/api/a1111/models', async (req, res) => {
+    try {
+        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const [models, vaes, loras, embeddings] = await Promise.all([
+            fetch(`${url}/sdapi/v1/sd-models`).then(r => r.json()),
+            fetch(`${url}/sdapi/v1/sd-vae`).then(r => r.json()).catch(() => []),
+            fetch(`${url}/sdapi/v1/loras`).then(r => r.json()).catch(() => []),
+            fetch(`${url}/sdapi/v1/embeddings`).then(r => r.json()).catch(() => ({}))
+        ]);
+        res.json({ models, vaes, loras, embeddings: Object.keys(embeddings.loaded || {}) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Switch model in A1111
+app.post('/api/a1111/model', async (req, res) => {
+    try {
+        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const { model, vae } = req.body;
+        const options = {};
+        if (model) options.sd_model_checkpoint = model;
+        if (vae) options.sd_vae = vae;
+        await fetch(`${url}/sdapi/v1/options`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(options)
+        });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ControlNet preprocessors
+app.post('/api/controlnet/preprocess', async (req, res) => {
+    try {
+        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const { image, module } = req.body;
+        const response = await fetch(`${url}/controlnet/detect`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ controlnet_input_images: [image], controlnet_module: module || 'canny' })
+        });
+        const data = await response.json();
+        res.json({ images: data.images });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Download model from Civitai
+app.post('/api/civitai/download', async (req, res) => {
+    try {
+        const { url: modelUrl, filename } = req.body;
+        const localUrl = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        
+        // Get model path from A1111
+        const optRes = await fetch(`${localUrl}/sdapi/v1/options`);
+        const options = await optRes.json();
+        const modelDir = options.outdir_samples?.replace('/outputs', '/models/Stable-diffusion') || path.join(MODELS_DIR, 'checkpoints');
+        
+        const filePath = path.join(modelDir, filename || 'model.safetensors');
+        const response = await fetch(modelUrl);
+        const fileStream = fs.createWriteStream(filePath);
+        
+        const totalSize = parseInt(response.headers.get('content-length'), 10);
+        let downloaded = 0;
+        
+        response.body.on('data', chunk => {
+            downloaded += chunk.length;
+            sendProgress({ type: 'download', progress: downloaded / totalSize, filename });
+        });
+        
+        await new Promise((resolve, reject) => {
+            response.body.pipe(fileStream);
+            response.body.on('error', reject);
+            fileStream.on('finish', resolve);
+        });
+        
+        res.json({ success: true, path: filePath });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Prompt enhancement via LLM
+app.post('/api/enhance-prompt', async (req, res) => {
+    try {
+        const { prompt, style } = req.body;
+        const apiKey = req.headers.authorization?.replace('Bearer ', '');
+        
+        // Use Pollinations text API (free)
+        const enhancePrompt = `Enhance this image generation prompt with more details and artistic descriptions. Keep it concise (under 200 words). Style: ${style || 'detailed'}. Original: "${prompt}"`;
+        const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(enhancePrompt)}`);
+        const enhanced = await response.text();
+        res.json({ enhanced: enhanced.trim() });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// X/Y/Z Plot generation
+app.post('/api/xyz-plot', async (req, res) => {
+    try {
+        const { baseParams, xAxis, yAxis, zAxis } = req.body;
+        const results = [];
+        const xValues = xAxis?.values || [''];
+        const yValues = yAxis?.values || [''];
+        const zValues = zAxis?.values || [''];
+        
+        for (const z of zValues) {
+            for (const y of yValues) {
+                for (const x of xValues) {
+                    const params = { ...baseParams };
+                    if (xAxis?.param) params[xAxis.param] = x;
+                    if (yAxis?.param) params[yAxis.param] = y;
+                    if (zAxis?.param) params[zAxis.param] = z;
+                    
+                    sendProgress({ type: 'xyz', x, y, z, status: 'generating' });
+                    const handler = backends[params.backend || 'local'];
+                    const result = await handler(params, req.headers);
+                    results.push({ x, y, z, images: result.data });
+                }
+            }
+        }
+        res.json({ results, grid: { x: xValues, y: yValues, z: zValues } });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Batch from file
+app.post('/api/batch-file', async (req, res) => {
+    try {
+        const { prompts, baseParams } = req.body;
+        const results = [];
+        for (let i = 0; i < prompts.length; i++) {
+            sendProgress({ type: 'batch', current: i + 1, total: prompts.length });
+            const params = { ...baseParams, prompt: prompts[i] };
+            const handler = backends[params.backend || 'local'];
+            const result = await handler(params, req.headers);
+            results.push({ prompt: prompts[i], images: result.data });
+        }
+        res.json({ results });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Templates endpoints
+app.get('/api/templates', (req, res) => res.json(templates));
+app.post('/api/templates', (req, res) => { templates.push({ id: Date.now(), ...req.body }); saveData('templates', templates); res.json({ success: true }); });
+app.delete('/api/templates/:id', (req, res) => { templates = templates.filter(t => t.id != req.params.id); saveData('templates', templates); res.json({ success: true }); });
 
 // Main generation endpoint
 app.post('/v1/images/generations', async (req, res) => {
