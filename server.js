@@ -545,8 +545,13 @@ const backends = {
     },
     
     async custom(body, headers) {
-        const customUrl = headers['x-custom-url'];
+        let customUrl = headers['x-custom-url'];
         if (!customUrl) throw new Error('Custom URL required');
+        
+        // Append /images/generations if not already present
+        if (!customUrl.includes('/images/generations') && !customUrl.includes('/chat/completions')) {
+            customUrl = customUrl.replace(/\/$/, '') + '/images/generations';
+        }
         
         const apiKey = headers.authorization?.replace('Bearer ', '');
         const reqHeaders = { 'Content-Type': 'application/json' };
