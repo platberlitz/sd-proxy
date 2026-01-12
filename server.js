@@ -93,8 +93,9 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 <label>API Key (if required)</label>
 <input type="password" id="apiKey" placeholder="Leave empty for free backends">
 
-<label>Model</label>
-<select id="model"><option value="">Default</option></select>
+<label>Model <button class="btn-sm btn-secondary" onclick="fetchModels()" style="float:right">🔄 Fetch</button></label>
+<input id="model" list="modelList" placeholder="Type or select model">
+<datalist id="modelList"></datalist>
 
 <label>Prompt</label>
 <textarea id="prompt" placeholder="masterpiece, best quality, 1girl, ">masterpiece, best quality, highly detailed, </textarea>
@@ -151,7 +152,7 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 <div id="civitaiInfo" style="margin-top:12px"></div>
 
 <label style="margin-top:20px">Available Models (from backend)</label>
-<div id="modelList" style="margin-top:8px;color:#888">Select a backend and click refresh</div>
+<div id="modelsDisplay" style="margin-top:8px;color:#888">Select a backend and click refresh</div>
 <button onclick="refreshModels()" class="btn-sm btn-secondary" style="margin-top:8px">Refresh Models</button>
 </div>
 </div>
@@ -398,19 +399,46 @@ async function loadCivitaiModel() {
 
 async function refreshModels() {
     const backend = $('backend').value;
-    $('modelList').textContent = 'Loading...';
+    $('modelsDisplay').textContent = 'Loading...';
     
     try {
         if (backend === 'local') {
             const res = await fetch($('localUrl').value + '/sdapi/v1/sd-models');
             const models = await res.json();
-            $('model').innerHTML = '<option value="">Default</option>' + models.map(m => '<option value="' + m.title + '">' + m.model_name + '</option>').join('');
-            $('modelList').innerHTML = models.map(m => '<div style="padding:4px 0;border-bottom:1px solid #333">' + m.model_name + '</div>').join('');
+            $('modelList').innerHTML = models.map(m => '<option value="' + m.title + '">').join('');
+            $('modelsDisplay').innerHTML = models.map(m => '<div style="padding:4px 0;border-bottom:1px solid #333">' + m.model_name + '</div>').join('');
         } else {
-            $('modelList').textContent = 'Model list not available for this backend';
+            $('modelsDisplay').textContent = 'Model list not available for this backend';
         }
     } catch (e) {
-        $('modelList').textContent = 'Error: ' + e.message;
+        $('modelsDisplay').textContent = 'Error: ' + e.message;
+    }
+}
+
+async function fetchModels() {
+    const backend = $('backend').value;
+    let url;
+    let headers = { 'Content-Type': 'application/json' };
+    const apiKey = $('apiKey').value;
+    if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
+    
+    try {
+        if (backend === 'local') {
+            url = $('localUrl').value + '/sdapi/v1/sd-models';
+            const res = await fetch(url);
+            const models = await res.json();
+            $('modelList').innerHTML = models.map(m => '<option value="' + m.title + '">').join('');
+        } else if (backend === 'custom') {
+            url = $('customUrl').value.replace(/\\/images\\/generations.*/, '/models').replace(/\\/chat\\/completions.*/, '/models');
+            const res = await fetch(url, { headers });
+            const data = await res.json();
+            const models = data.data || data.models || data;
+            $('modelList').innerHTML = (Array.isArray(models) ? models : []).map(m => '<option value="' + (m.id || m.name || m) + '">').join('');
+        } else {
+            $('modelList').innerHTML = '';
+        }
+    } catch (e) {
+        alert('Failed to fetch models: ' + e.message);
     }
 }
 
