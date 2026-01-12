@@ -132,6 +132,53 @@ code{background:#1a2e1a;padding:8px;border-radius:4px;display:block;font-size:11
 <option value="exponential">Exponential</option>
 <option value="sgm_uniform">SGM Uniform</option>
 </select></div>
+<div><label>Style</label>
+<select id="style">
+<option value="">None</option>
+<option value="anime, cel shading, vibrant colors">Anime</option>
+<option value="realistic, photorealistic, hyperrealistic, 8k uhd, dslr">Photorealistic</option>
+<option value="digital painting, concept art, artstation">Digital Art</option>
+<option value="oil painting, classical, renaissance style">Oil Painting</option>
+<option value="watercolor painting, soft edges, flowing colors">Watercolor</option>
+<option value="pencil sketch, graphite, hand drawn">Pencil Sketch</option>
+<option value="ink drawing, lineart, pen and ink">Ink Drawing</option>
+<option value="pixel art, 16-bit, retro game style">Pixel Art</option>
+<option value="3d render, octane render, unreal engine 5">3D Render</option>
+<option value="cyberpunk, neon lights, futuristic, sci-fi">Cyberpunk</option>
+<option value="fantasy art, magical, ethereal, mystical">Fantasy</option>
+<option value="comic book style, bold lines, halftone">Comic Book</option>
+<option value="manga style, japanese comic, screentone">Manga</option>
+<option value="chibi, cute, kawaii, super deformed">Chibi</option>
+<option value="studio ghibli style, miyazaki, whimsical">Ghibli</option>
+<option value="ukiyo-e, japanese woodblock print">Ukiyo-e</option>
+<option value="art nouveau, ornate, decorative, mucha style">Art Nouveau</option>
+<option value="art deco, geometric, 1920s style">Art Deco</option>
+<option value="impressionist, monet style, soft brushstrokes">Impressionist</option>
+<option value="surrealist, dreamlike, dali style">Surrealist</option>
+<option value="pop art, warhol style, bold colors">Pop Art</option>
+<option value="minimalist, simple, clean lines">Minimalist</option>
+<option value="gothic, dark, macabre, victorian">Gothic</option>
+<option value="steampunk, victorian sci-fi, brass and gears">Steampunk</option>
+<option value="vaporwave, 80s aesthetic, synthwave, retrowave">Vaporwave</option>
+<option value="low poly, geometric, polygonal 3d">Low Poly</option>
+<option value="isometric, isometric view, game asset">Isometric</option>
+<option value="stained glass, colorful glass, cathedral">Stained Glass</option>
+<option value="graffiti art, street art, urban">Graffiti</option>
+<option value="charcoal drawing, smudged, dramatic shadows">Charcoal</option>
+<option value="pastel colors, soft, dreamy, light">Pastel</option>
+<option value="noir, black and white, high contrast, dramatic">Film Noir</option>
+<option value="vintage photo, old photograph, sepia, aged">Vintage Photo</option>
+<option value="polaroid, instant photo, nostalgic">Polaroid</option>
+<option value="cinematic, movie still, dramatic lighting, anamorphic">Cinematic</option>
+<option value="portrait photography, studio lighting, professional">Portrait</option>
+<option value="landscape photography, nature, scenic">Landscape</option>
+<option value="macro photography, close-up, detailed">Macro</option>
+<option value="abstract, non-representational, shapes and colors">Abstract</option>
+<option value="psychedelic, trippy, vibrant, kaleidoscopic">Psychedelic</option>
+<option value="dark fantasy, grimdark, elden ring style">Dark Fantasy</option>
+<option value="cute anime, moe, adorable">Moe Anime</option>
+<option value="90s anime, retro anime, vintage anime style">90s Anime</option>
+</select></div>
 <div><label>Seed</label><input type="number" id="seed" value="-1"></div>
 <div><label>Batch</label><input type="number" id="batch" value="1" min="1" max="4"></div>
 </div>
@@ -252,8 +299,9 @@ async function generate() {
     
     try {
         const backend = $('backend').value;
+        const style = $('style').value;
         const body = {
-            prompt: $('prompt').value,
+            prompt: $('prompt').value + (style ? ', ' + style : ''),
             negative_prompt: $('negative').value,
             width: parseInt($('width').value),
             height: parseInt($('height').value),
