@@ -1,0 +1,523 @@
+<!DOCTYPE html><html><head>
+<title>SD Proxy</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0d1a0d;color:#c8d6c8;min-height:100vh;padding:10px;font-size:13px}
+.container{max-width:1200px;margin:0 auto}
+h1{color:#4ade80;font-size:18px;margin-bottom:8px}
+.tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.tab{padding:6px 12px;background:#1a2e1a;border:1px solid #2d4a2d;color:#8fbc8f;cursor:pointer;border-radius:4px;font-size:12px}
+.tab:hover{background:#243824}.tab.active{background:#2d5a2d;color:#4ade80;border-color:#4ade80}
+.tab-content{display:none}.tab-content.active{display:block}
+.card{background:#142014;border:1px solid #2d4a2d;padding:12px;border-radius:6px;margin-bottom:10px}
+label{display:block;margin:6px 0 2px;color:#6b8e6b;font-size:11px;text-transform:uppercase}
+input,select,textarea{width:100%;padding:6px 8px;background:#0d1a0d;border:1px solid #2d4a2d;border-radius:4px;color:#c8d6c8;font-size:13px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#4ade80}
+textarea{min-height:50px;resize:vertical;font-family:inherit}
+button{padding:6px 12px;background:#2d5a2d;border:1px solid #4ade80;color:#4ade80;border-radius:4px;cursor:pointer;font-size:12px}
+button:hover{background:#3d6a3d}button:disabled{opacity:0.4}
+.btn-primary{background:#4ade80;color:#0d1a0d;font-weight:600}
+.btn-sm{padding:3px 8px;font-size:11px}
+.btn-danger{background:#5a2d2d;border-color:#e94560;color:#e94560}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+.row-2{grid-template-columns:1fr 1fr}
+.row-3{grid-template-columns:1fr 1fr 1fr}
+.row-4{grid-template-columns:repeat(4,1fr)}
+.row-5{grid-template-columns:repeat(5,1fr)}
+.flex{display:flex;gap:8px;align-items:center}
+.mt{margin-top:10px}
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+.img-card{background:#1a2e1a;padding:6px;border-radius:4px;text-align:center;position:relative}
+.img-card img{width:100%;border-radius:3px;cursor:pointer}
+.img-card .actions{display:flex;gap:4px;justify-content:center;margin-top:4px;flex-wrap:wrap}
+.img-card .actions button{padding:2px 6px;font-size:10px}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999;justify-content:center;align-items:center;flex-direction:column;gap:10px}
+.modal.show{display:flex}
+.modal img{max-width:90%;max-height:80%;object-fit:contain}
+.modal .controls{display:flex;gap:8px}
+.history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;max-height:400px;overflow-y:auto}
+.history-item{background:#1a2e1a;padding:4px;border-radius:4px;cursor:pointer;position:relative}
+.history-item img{width:100%;border-radius:3px}
+.history-item:hover{outline:2px solid #4ade80}
+.history-item .star{position:absolute;top:2px;right:2px;font-size:14px;cursor:pointer}
+.queue-item{background:#1a2e1a;padding:8px;border-radius:4px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.preset-item{background:#1a2e1a;padding:8px;border-radius:4px;margin-bottom:6px;cursor:pointer}
+.preset-item:hover{background:#243824}
+.folder-item{display:inline-block;padding:4px 10px;background:#1a2e1a;border-radius:4px;margin:2px;cursor:pointer}
+.folder-item.active{background:#2d5a2d;color:#4ade80}
+#status{font-size:12px;padding:6px 0;color:#8fbc8f}
+.canvas-container{position:relative;display:inline-block;border:1px solid #2d4a2d;border-radius:4px;overflow:hidden}
+.canvas-container canvas{display:block}
+.brush-size{width:100px}
+.compare-slider{position:relative;width:100%;overflow:hidden}
+.compare-slider img{width:100%;display:block}
+.compare-slider .overlay{position:absolute;top:0;left:0;height:100%;overflow:hidden}
+.compare-slider input{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:80%}
+.tag{display:inline-block;padding:2px 6px;background:#2d4a2d;border-radius:3px;margin:2px;font-size:11px;cursor:pointer}
+.tag:hover{background:#4ade80;color:#0d1a0d}
+.autocomplete{position:absolute;background:#142014;border:1px solid #2d4a2d;border-radius:4px;max-height:200px;overflow-y:auto;z-index:100;width:100%}
+.autocomplete div{padding:6px 10px;cursor:pointer}
+.autocomplete div:hover{background:#2d5a2d}
+.cost-display{background:#1a2e1a;padding:8px;border-radius:4px;font-size:12px}
+code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11px;color:#8fbc8f;overflow-x:auto}
+.drop-zone{border:2px dashed #2d4a2d;border-radius:6px;padding:20px;text-align:center;color:#6b8e6b;cursor:pointer}
+.drop-zone.dragover{border-color:#4ade80;background:#1a2e1a}
+.drop-zone img{max-width:100%;max-height:200px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🎨 SD Proxy</h1>
+<div class="tabs">
+<button class="tab active" onclick="showTab('generate')">Generate</button>
+<button class="tab" onclick="showTab('img2img')">Img2Img</button>
+<button class="tab" onclick="showTab('inpaint')">Inpaint</button>
+<button class="tab" onclick="showTab('upscale')">Upscale</button>
+<button class="tab" onclick="showTab('queue')">Queue <span id="queueCount"></span></button>
+<button class="tab" onclick="showTab('history')">History</button>
+<button class="tab" onclick="showTab('favorites')">Favorites</button>
+<button class="tab" onclick="showTab('presets')">Presets</button>
+<button class="tab" onclick="showTab('settings')">Settings</button>
+</div>
+
+<!-- Generate Tab -->
+<div id="tab-generate" class="tab-content active">
+<div class="card">
+<div class="row-3">
+<div><label>Backend</label>
+<select id="backend" onchange="onBackendChange()">
+<option value="local">Local A1111</option>
+<option value="comfyui">ComfyUI</option>
+<option value="pollinations">Pollinations (Free)</option>
+<option value="nanogpt">NanoGPT</option>
+<option value="pixai">PixAI</option>
+<option value="stability">Stability AI</option>
+<option value="replicate">Replicate</option>
+<option value="fal">Fal.ai</option>
+<option value="together">Together AI</option>
+<option value="custom">Custom</option>
+</select></div>
+<div><label>API Key</label><input type="password" id="apiKey" placeholder="If required"></div>
+<div><label>Model</label><input id="model" list="modelList" placeholder="Model name"><datalist id="modelList"></datalist></div>
+</div>
+<div id="customEndpoint" style="display:none" class="mt"><label>Custom URL</label><input id="customUrl" placeholder="https://api.example.com/v1"></div>
+
+<label>Prompt <button class="btn-sm" onclick="showWildcardHelp()" style="float:right">? Wildcards</button></label>
+<div style="position:relative">
+<textarea id="prompt" placeholder="masterpiece, best quality, " oninput="onPromptInput(this)">masterpiece, best quality, highly detailed, </textarea>
+<div id="autocomplete" class="autocomplete" style="display:none"></div>
+</div>
+
+<label>Negative Prompt</label>
+<textarea id="negative" rows="2">lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, blurry, deformed, ugly, duplicate, morbid, mutilated, mutation, disfigured, malformed limbs, extra limbs, fused fingers, too many fingers, long neck</textarea>
+
+<div class="row-5">
+<div><label>Width</label><input type="number" id="width" value="512" step="64"></div>
+<div><label>Height</label><input type="number" id="height" value="768" step="64"></div>
+<div><label>Steps</label><input type="number" id="steps" value="25"></div>
+<div><label>CFG</label><input type="number" id="cfg" value="7" step="0.5"></div>
+<div><label>Seed</label><input type="number" id="seed" value="-1"></div>
+</div>
+
+<div class="row-4">
+<div><label>Sampler</label><select id="sampler">
+<option value="euler_ancestral">Euler a</option><option value="euler">Euler</option><option value="dpmpp_2m" selected>DPM++ 2M</option><option value="dpmpp_sde">DPM++ SDE</option><option value="ddim">DDIM</option><option value="uni_pc">UniPC</option>
+</select></div>
+<div><label>Scheduler</label><select id="scheduler">
+<option value="karras" selected>Karras</option><option value="normal">Normal</option><option value="exponential">Exponential</option>
+</select></div>
+<div><label>Style</label><select id="style">
+<option value="">None</option>
+<option value="anime, cel shading">Anime</option>
+<option value="photorealistic, 8k uhd">Photorealistic</option>
+<option value="digital painting, artstation">Digital Art</option>
+<option value="oil painting, classical">Oil Painting</option>
+<option value="watercolor, soft edges">Watercolor</option>
+<option value="pencil sketch, graphite">Sketch</option>
+<option value="pixel art, 16-bit">Pixel Art</option>
+<option value="3d render, octane">3D Render</option>
+<option value="cyberpunk, neon">Cyberpunk</option>
+<option value="fantasy art, magical">Fantasy</option>
+<option value="comic book, halftone">Comic</option>
+<option value="manga style">Manga</option>
+<option value="chibi, kawaii">Chibi</option>
+<option value="studio ghibli">Ghibli</option>
+<option value="cinematic, movie still">Cinematic</option>
+<option value="dark fantasy, grimdark">Dark Fantasy</option>
+<option value="vaporwave, synthwave">Vaporwave</option>
+<option value="noir, high contrast">Film Noir</option>
+</select></div>
+<div><label>Batch</label><input type="number" id="batch" value="1" min="1" max="4"></div>
+</div>
+
+<div class="row-3 mt">
+<div><label><input type="checkbox" id="hiresFix"> Hires Fix</label></div>
+<div><label><input type="checkbox" id="faceRestore"> Face Restore</label></div>
+<div><label>Hires Scale</label><input type="number" id="hiresScale" value="1.5" min="1" max="2" step="0.1"></div>
+</div>
+
+<div class="flex mt">
+<button onclick="generate()" id="genBtn" class="btn-primary">Generate (Ctrl+Enter)</button>
+<button onclick="addToQueue()">+ Queue</button>
+<button onclick="savePreset()">Save Preset</button>
+<button onclick="randomSeed()">🎲</button>
+</div>
+<div id="status"></div>
+</div>
+<div id="result" class="img-grid"></div>
+</div>
+
+<!-- Img2Img Tab -->
+<div id="tab-img2img" class="tab-content">
+<div class="card">
+<label>Source Image</label>
+<div class="drop-zone" id="img2imgDrop" onclick="document.getElementById('img2imgFile').click()">
+Drop image here or click to upload
+<input type="file" id="img2imgFile" accept="image/*" style="display:none" onchange="loadImg2Img(this)">
+<img id="img2imgPreview" style="display:none">
+</div>
+<div class="row-2 mt">
+<div><label>Denoising Strength</label><input type="range" id="img2imgStrength" min="0" max="1" step="0.05" value="0.75" oninput="this.nextElementSibling.textContent=this.value"><span>0.75</span></div>
+<div><label>Resize Mode</label><select id="resizeMode"><option value="0">Just Resize</option><option value="1">Crop and Resize</option><option value="2">Resize and Fill</option></select></div>
+</div>
+<button onclick="generateImg2Img()" class="btn-primary mt">Generate Img2Img</button>
+</div>
+<div id="img2imgResult" class="img-grid"></div>
+</div>
+
+<!-- Inpaint Tab -->
+<div id="tab-inpaint" class="tab-content">
+<div class="card">
+<label>Source Image</label>
+<div class="drop-zone" id="inpaintDrop" onclick="document.getElementById('inpaintFile').click()">
+Drop image here or click to upload
+<input type="file" id="inpaintFile" accept="image/*" style="display:none" onchange="loadInpaint(this)">
+</div>
+<div class="canvas-container mt" id="inpaintContainer" style="display:none">
+<canvas id="inpaintCanvas"></canvas>
+</div>
+<div class="flex mt">
+<label>Brush: <input type="range" id="brushSize" class="brush-size" min="5" max="100" value="30" oninput="brushSizeVal=this.value"></label>
+<button onclick="clearMask()" class="btn-sm">Clear Mask</button>
+<button onclick="invertMask()" class="btn-sm">Invert</button>
+</div>
+<div class="row-2 mt">
+<div><label>Inpaint Fill</label><select id="inpaintFill"><option value="0">Fill</option><option value="1" selected>Original</option><option value="2">Latent Noise</option><option value="3">Latent Nothing</option></select></div>
+<div><label>Mask Blur</label><input type="number" id="maskBlur" value="4" min="0" max="64"></div>
+</div>
+<button onclick="generateInpaint()" class="btn-primary mt">Inpaint</button>
+</div>
+<div id="inpaintResult" class="img-grid"></div>
+</div>
+
+<!-- Upscale Tab -->
+<div id="tab-upscale" class="tab-content">
+<div class="card">
+<label>Image to Upscale</label>
+<div class="drop-zone" id="upscaleDrop" onclick="document.getElementById('upscaleFile').click()">
+Drop image here or click to upload
+<input type="file" id="upscaleFile" accept="image/*" style="display:none" onchange="loadUpscale(this)">
+<img id="upscalePreview" style="display:none">
+</div>
+<div class="row-2 mt">
+<div><label>Scale</label><select id="upscaleScale"><option value="2">2x</option><option value="4">4x</option></select></div>
+<div><label>Upscaler</label><select id="upscaler"><option>R-ESRGAN 4x+</option><option>R-ESRGAN 4x+ Anime6B</option><option>ESRGAN_4x</option><option>Lanczos</option></select></div>
+</div>
+<button onclick="upscaleImage()" class="btn-primary mt">Upscale</button>
+</div>
+<div id="upscaleResult" class="img-grid"></div>
+</div>
+
+<!-- Queue Tab -->
+<div id="tab-queue" class="tab-content">
+<div class="card">
+<div class="flex"><h3 style="flex:1">Generation Queue</h3><button onclick="processQueue()" class="btn-primary">Process All</button></div>
+<div id="queueList" class="mt"></div>
+</div>
+</div>
+
+<!-- History Tab -->
+<div id="tab-history" class="tab-content">
+<div class="card">
+<div class="flex">
+<input id="historySearch" placeholder="Search prompts..." oninput="loadHistory()" style="flex:1">
+<button onclick="clearHistory()" class="btn-sm btn-danger">Clear All</button>
+</div>
+<div class="mt">
+<span class="folder-item active" onclick="filterFolder(null)">All</span>
+<span id="folderList"></span>
+<button class="btn-sm" onclick="createFolder()">+ Folder</button>
+</div>
+</div>
+<div id="historyGrid" class="history-grid"></div>
+</div>
+
+<!-- Favorites Tab -->
+<div id="tab-favorites" class="tab-content">
+<div class="card"><h3>⭐ Favorites</h3></div>
+<div id="favoritesGrid" class="img-grid"></div>
+</div>
+
+<!-- Presets Tab -->
+<div id="tab-presets" class="tab-content">
+<div class="card">
+<h3>Saved Presets</h3>
+<div id="presetList" class="mt"></div>
+</div>
+</div>
+
+<!-- Settings Tab -->
+<div id="tab-settings" class="tab-content">
+<div class="card">
+<div class="row-2">
+<div><label>A1111 URL</label><input id="localUrl" value="http://127.0.0.1:7860" onchange="saveSettings()"></div>
+<div><label>ComfyUI URL</label><input id="comfyUrl" value="http://127.0.0.1:8188" onchange="saveSettings()"></div>
+</div>
+<label class="mt">Default Quality Tags</label>
+<input id="qualityTags" value="masterpiece, best quality, highly detailed, " onchange="saveSettings()">
+<label class="mt">Cost Tracking</label>
+<div class="cost-display" id="costDisplay">Total: $0.00</div>
+<button onclick="resetCosts()" class="btn-sm btn-danger mt">Reset Costs</button>
+<label class="mt">Keyboard Shortcuts</label>
+<code>Ctrl+Enter: Generate | Ctrl+S: Save Preset | Ctrl+Q: Add to Queue</code>
+<label class="mt">API Endpoints</label>
+<code>POST /v1/images/generations<br>POST /v1/chat/completions<br>GET /v1/models<br>POST /api/upscale<br>GET/POST /api/queue<br>GET /api/history<br>GET/POST /api/favorites</code>
+<label class="mt">Export/Import</label>
+<div class="flex"><button onclick="exportData()">Export All Data</button><button onclick="document.getElementById('importFile').click()">Import Data</button></div>
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+</div>
+</div>
+
+<!-- Modal -->
+<div class="modal" id="modal" onclick="if(event.target===this)closeModal()">
+<img id="modalImg">
+<div class="controls">
+<button onclick="downloadImage()">Download</button>
+<button onclick="sendToImg2Img()">→ Img2Img</button>
+<button onclick="sendToInpaint()">→ Inpaint</button>
+<button onclick="sendToUpscale()">→ Upscale</button>
+<button onclick="toggleFavorite()">⭐ Favorite</button>
+<button onclick="showMetadata()">📋 Metadata</button>
+<button onclick="closeModal()">Close</button>
+</div>
+</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let settings=JSON.parse(localStorage.getItem('sdproxy_settings')||'{}');
+let currentImage=null, brushSizeVal=30, inpaintImg=null, maskCanvas=null, maskCtx=null, drawing=false;
+
+// Danbooru tags for autocomplete
+const TAGS=['1girl','1boy','solo','long_hair','short_hair','blonde_hair','brown_hair','black_hair','blue_eyes','red_eyes','smile','looking_at_viewer','standing','sitting','outdoors','indoors','sky','simple_background','white_background','full_body','upper_body','portrait','dress','shirt','skirt','pants','school_uniform','armor','weapon','sword','magic','fantasy','sci-fi','cyberpunk','night','day','sunset','rain','snow','flowers','forest','city','beach','mountains'];
+
+function showTab(id){document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));$('tab-'+id).classList.add('active');event.target.classList.add('active');}
+function showModal(url){currentImage=url;$('modalImg').src=url;$('modal').classList.add('show');}
+function closeModal(){$('modal').classList.remove('show');}
+function onBackendChange(){$('customEndpoint').style.display=$('backend').value==='custom'?'block':'none';}
+function randomSeed(){$('seed').value=Math.floor(Math.random()*2147483647);}
+
+function saveSettings(){settings={localUrl:$('localUrl').value,comfyUrl:$('comfyUrl').value,qualityTags:$('qualityTags').value};localStorage.setItem('sdproxy_settings',JSON.stringify(settings));}
+function loadSettings(){if(settings.localUrl)$('localUrl').value=settings.localUrl;if(settings.comfyUrl)$('comfyUrl').value=settings.comfyUrl;if(settings.qualityTags)$('qualityTags').value=settings.qualityTags;}
+
+// Wildcard expansion
+function expandWildcards(text){return text.replace(/\{([^}]+)\}/g,(m,p)=>{const opts=p.split('|');return opts[Math.floor(Math.random()*opts.length)];});}
+
+// Prompt autocomplete
+function onPromptInput(el){
+    const val=el.value,pos=el.selectionStart,lastComma=val.lastIndexOf(',',pos-1),word=val.slice(lastComma+1,pos).trim().toLowerCase();
+    if(word.length<2){$('autocomplete').style.display='none';return;}
+    const matches=TAGS.filter(t=>t.startsWith(word)).slice(0,10);
+    if(!matches.length){$('autocomplete').style.display='none';return;}
+    $('autocomplete').innerHTML=matches.map(t=>`<div onclick="insertTag('${t}')">${t}</div>`).join('');
+    $('autocomplete').style.display='block';
+}
+function insertTag(tag){const el=$('prompt'),val=el.value,pos=el.selectionStart,lastComma=val.lastIndexOf(',',pos-1);el.value=val.slice(0,lastComma+1)+' '+tag+', '+val.slice(pos);$('autocomplete').style.display='none';el.focus();}
+
+async function generate(){
+    const btn=$('genBtn');btn.disabled=true;$('status').textContent='⏳ Generating...';
+    try{
+        const style=$('style').value;
+        const body={
+            prompt:expandWildcards($('prompt').value)+(style?', '+style:''),
+            negative_prompt:$('negative').value,
+            width:+$('width').value,height:+$('height').value,steps:+$('steps').value,
+            cfg_scale:+$('cfg').value,sampler:$('sampler').value,scheduler:$('scheduler').value,
+            seed:+$('seed').value,n:+$('batch').value,model:$('model').value,
+            hires_fix:$('hiresFix').checked,hires_scale:+$('hiresScale').value,face_restore:$('faceRestore').checked
+        };
+        if(body.seed<0)delete body.seed;
+        const headers={'Content-Type':'application/json','X-Backend':$('backend').value};
+        if($('apiKey').value)headers['Authorization']='Bearer '+$('apiKey').value;
+        if($('backend').value==='local')headers['X-Local-Url']=$('localUrl').value;
+        if($('backend').value==='comfyui')headers['X-Local-Url']=$('comfyUrl').value;
+        if($('backend').value==='custom')headers['X-Custom-Url']=$('customUrl').value;
+        const res=await fetch('/v1/images/generations',{method:'POST',headers,body:JSON.stringify(body)});
+        const data=await res.json();
+        if(data.error)throw new Error(data.error);
+        if(data.data?.length){
+            $('status').textContent='✅ Done';
+            $('result').innerHTML=data.data.map(d=>{
+                const url=d.url||(d.b64_json?.startsWith('data:')?d.b64_json:'data:image/png;base64,'+d.b64_json);
+                return `<div class="img-card"><img src="${url}" onclick="showModal(this.src)"><div class="actions"><button onclick="showModal('${url}')">View</button><button onclick="sendToImg2ImgUrl('${url}')">i2i</button><button onclick="addFavorite('${url}')">⭐</button></div></div>`;
+            }).join('');
+        }
+    }catch(e){$('status').textContent='❌ '+e.message;}
+    btn.disabled=false;
+}
+
+// Img2Img
+let img2imgData=null;
+function loadImg2Img(input){
+    const file=input.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{img2imgData=e.target.result;$('img2imgPreview').src=img2imgData;$('img2imgPreview').style.display='block';};
+    reader.readAsDataURL(file);
+}
+async function generateImg2Img(){
+    if(!img2imgData)return alert('Upload an image first');
+    $('status').textContent='⏳ Generating...';
+    const body={prompt:expandWildcards($('prompt').value),negative_prompt:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,init_image:img2imgData,strength:+$('img2imgStrength').value};
+    const headers={'Content-Type':'application/json','X-Backend':$('backend').value,'X-Local-Url':$('localUrl').value};
+    if($('apiKey').value)headers['Authorization']='Bearer '+$('apiKey').value;
+    try{
+        const res=await fetch('/v1/images/generations',{method:'POST',headers,body:JSON.stringify(body)});
+        const data=await res.json();
+        if(data.error)throw new Error(data.error);
+        $('img2imgResult').innerHTML=data.data.map(d=>`<div class="img-card"><img src="data:image/png;base64,${d.b64_json}" onclick="showModal(this.src)"></div>`).join('');
+        $('status').textContent='✅ Done';
+    }catch(e){$('status').textContent='❌ '+e.message;}
+}
+
+// Inpainting
+function loadInpaint(input){
+    const file=input.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+        inpaintImg=new Image();
+        inpaintImg.onload=()=>{
+            const canvas=$('inpaintCanvas'),ctx=canvas.getContext('2d');
+            canvas.width=inpaintImg.width;canvas.height=inpaintImg.height;
+            ctx.drawImage(inpaintImg,0,0);
+            maskCanvas=document.createElement('canvas');maskCanvas.width=inpaintImg.width;maskCanvas.height=inpaintImg.height;
+            maskCtx=maskCanvas.getContext('2d');maskCtx.fillStyle='black';maskCtx.fillRect(0,0,maskCanvas.width,maskCanvas.height);
+            $('inpaintContainer').style.display='block';
+            setupInpaintEvents(canvas,ctx);
+        };
+        inpaintImg.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+function setupInpaintEvents(canvas,ctx){
+    canvas.onmousedown=e=>{drawing=true;draw(e,ctx);};
+    canvas.onmousemove=e=>{if(drawing)draw(e,ctx);};
+    canvas.onmouseup=()=>drawing=false;
+    canvas.onmouseleave=()=>drawing=false;
+}
+function draw(e,ctx){
+    const rect=e.target.getBoundingClientRect(),x=(e.clientX-rect.left)*(e.target.width/rect.width),y=(e.clientY-rect.top)*(e.target.height/rect.height);
+    ctx.globalCompositeOperation='source-over';ctx.fillStyle='rgba(255,0,0,0.5)';ctx.beginPath();ctx.arc(x,y,brushSizeVal,0,Math.PI*2);ctx.fill();
+    maskCtx.fillStyle='white';maskCtx.beginPath();maskCtx.arc(x,y,brushSizeVal,0,Math.PI*2);maskCtx.fill();
+}
+function clearMask(){if(!inpaintImg)return;const ctx=$('inpaintCanvas').getContext('2d');ctx.drawImage(inpaintImg,0,0);maskCtx.fillStyle='black';maskCtx.fillRect(0,0,maskCanvas.width,maskCanvas.height);}
+function invertMask(){const imgData=maskCtx.getImageData(0,0,maskCanvas.width,maskCanvas.height);for(let i=0;i<imgData.data.length;i+=4){imgData.data[i]=255-imgData.data[i];imgData.data[i+1]=255-imgData.data[i+1];imgData.data[i+2]=255-imgData.data[i+2];}maskCtx.putImageData(imgData,0,0);}
+async function generateInpaint(){
+    if(!inpaintImg||!maskCanvas)return alert('Load an image and draw a mask');
+    $('status').textContent='⏳ Inpainting...';
+    const tempCanvas=document.createElement('canvas');tempCanvas.width=inpaintImg.width;tempCanvas.height=inpaintImg.height;
+    tempCanvas.getContext('2d').drawImage(inpaintImg,0,0);
+    const body={prompt:expandWildcards($('prompt').value),negative_prompt:$('negative').value,init_image:tempCanvas.toDataURL(),mask:maskCanvas.toDataURL(),inpaint_fill:+$('inpaintFill').value,steps:+$('steps').value,cfg_scale:+$('cfg').value};
+    const headers={'Content-Type':'application/json','X-Backend':'local','X-Local-Url':$('localUrl').value};
+    try{
+        const res=await fetch('/v1/images/generations',{method:'POST',headers,body:JSON.stringify(body)});
+        const data=await res.json();
+        if(data.error)throw new Error(data.error);
+        $('inpaintResult').innerHTML=data.data.map(d=>`<div class="img-card"><img src="data:image/png;base64,${d.b64_json}" onclick="showModal(this.src)"></div>`).join('');
+        $('status').textContent='✅ Done';
+    }catch(e){$('status').textContent='❌ '+e.message;}
+}
+
+// Upscale
+let upscaleData=null;
+function loadUpscale(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{upscaleData=e.target.result;$('upscalePreview').src=upscaleData;$('upscalePreview').style.display='block';};reader.readAsDataURL(file);}
+async function upscaleImage(){
+    if(!upscaleData)return alert('Upload an image first');
+    $('status').textContent='⏳ Upscaling...';
+    try{
+        const res=await fetch('/api/upscale',{method:'POST',headers:{'Content-Type':'application/json','X-Local-Url':$('localUrl').value},body:JSON.stringify({image:upscaleData.split(',')[1],scale:+$('upscaleScale').value,upscaler:$('upscaler').value})});
+        const data=await res.json();
+        if(data.error)throw new Error(data.error);
+        $('upscaleResult').innerHTML=`<div class="img-card"><img src="data:image/png;base64,${data.image}" onclick="showModal(this.src)"><div class="actions"><button onclick="downloadBase64('${data.image}')">Download</button></div></div>`;
+        $('status').textContent='✅ Done';
+    }catch(e){$('status').textContent='❌ '+e.message;}
+}
+
+// Queue
+async function addToQueue(){
+    const body={prompt:$('prompt').value,negative_prompt:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,backend:$('backend').value};
+    await fetch('/api/queue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    loadQueue();
+}
+async function loadQueue(){const res=await fetch('/api/queue');const q=await res.json();$('queueCount').textContent=q.length?`(${q.length})`:'';$('queueList').innerHTML=q.map(i=>`<div class="queue-item"><span>${i.prompt?.slice(0,50)}...</span><button class="btn-sm btn-danger" onclick="removeFromQueue(${i.id})">×</button></div>`).join('')||'<p style="color:#6b8e6b">Queue empty</p>';}
+async function removeFromQueue(id){await fetch('/api/queue/'+id,{method:'DELETE'});loadQueue();}
+async function processQueue(){$('status').textContent='⏳ Processing queue...';const res=await fetch('/api/queue/process',{method:'POST'});const results=await res.json();$('status').textContent=`✅ Processed ${results.length} items`;loadQueue();loadHistory();}
+
+// History
+let currentFolder=null;
+async function loadHistory(){
+    const search=$('historySearch')?.value||'';
+    const res=await fetch(`/api/history?search=${encodeURIComponent(search)}&folder=${currentFolder||''}`);
+    const data=await res.json();
+    $('historyGrid').innerHTML=data.items.map(h=>`<div class="history-item" onclick="showModal('${h.images[0]?.url||'data:image/png;base64,'+h.images[0]?.b64_json}')"><img src="${h.images[0]?.url||'data:image/png;base64,'+h.images[0]?.b64_json}"><span class="star" onclick="event.stopPropagation();addFavoriteFromHistory(${h.id})">☆</span></div>`).join('')||'<p style="color:#6b8e6b">No history</p>';
+}
+async function clearHistory(){if(confirm('Clear all history?')){await fetch('/api/history',{method:'DELETE'});loadHistory();}}
+function filterFolder(f){currentFolder=f;document.querySelectorAll('.folder-item').forEach(el=>el.classList.remove('active'));event.target.classList.add('active');loadHistory();}
+async function createFolder(){const name=prompt('Folder name:');if(name){await fetch('/api/folders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});loadFolders();}}
+async function loadFolders(){const res=await fetch('/api/folders');const folders=await res.json();$('folderList').innerHTML=folders.map(f=>`<span class="folder-item" onclick="filterFolder('${f.name}')">${f.name}</span>`).join('');}
+
+// Favorites
+async function loadFavorites(){const res=await fetch('/api/favorites');const favs=await res.json();$('favoritesGrid').innerHTML=favs.map(f=>`<div class="img-card"><img src="${f.url}" onclick="showModal(this.src)"><div class="actions"><button onclick="removeFavorite(${f.id})" class="btn-danger btn-sm">Remove</button></div></div>`).join('')||'<p style="color:#6b8e6b">No favorites</p>';}
+async function addFavorite(url){await fetch('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});loadFavorites();}
+async function removeFavorite(id){await fetch('/api/favorites/'+id,{method:'DELETE'});loadFavorites();}
+function toggleFavorite(){if(currentImage)addFavorite(currentImage);}
+
+// Presets
+async function loadPresets(){const res=await fetch('/api/presets');const presets=await res.json();$('presetList').innerHTML=presets.map(p=>`<div class="preset-item" onclick="applyPreset(${JSON.stringify(p).replace(/"/g,'&quot;')})"><strong>${p.name}</strong><br><small style="color:#6b8e6b">${p.prompt?.slice(0,60)}...</small><button class="btn-sm btn-danger" style="float:right" onclick="event.stopPropagation();deletePreset(${p.id})">×</button></div>`).join('')||'<p style="color:#6b8e6b">No presets</p>';}
+async function savePreset(){const name=prompt('Preset name:');if(!name)return;const preset={name,prompt:$('prompt').value,negative:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg:+$('cfg').value,sampler:$('sampler').value,scheduler:$('scheduler').value,style:$('style').value};await fetch('/api/presets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(preset)});loadPresets();}
+function applyPreset(p){$('prompt').value=p.prompt||'';$('negative').value=p.negative||'';$('width').value=p.width||512;$('height').value=p.height||768;$('steps').value=p.steps||25;$('cfg').value=p.cfg||7;if(p.sampler)$('sampler').value=p.sampler;if(p.scheduler)$('scheduler').value=p.scheduler;if(p.style)$('style').value=p.style;}
+async function deletePreset(id){await fetch('/api/presets/'+id,{method:'DELETE'});loadPresets();}
+
+// Costs
+async function loadCosts(){const res=await fetch('/api/costs');const costs=await res.json();$('costDisplay').innerHTML=`Total: $${costs.total.toFixed(4)}<br>${Object.entries(costs.byBackend).map(([k,v])=>`${k}: $${v.toFixed(4)}`).join('<br>')}`;}
+async function resetCosts(){if(confirm('Reset cost tracking?')){await fetch('/api/costs',{method:'DELETE'});loadCosts();}}
+
+// Modal actions
+function downloadImage(){if(!currentImage)return;const a=document.createElement('a');a.href=currentImage;a.download='image.png';a.click();}
+function sendToImg2Img(){if(!currentImage)return;img2imgData=currentImage;$('img2imgPreview').src=currentImage;$('img2imgPreview').style.display='block';showTab('img2img');closeModal();}
+function sendToImg2ImgUrl(url){img2imgData=url;$('img2imgPreview').src=url;$('img2imgPreview').style.display='block';showTab('img2img');}
+function sendToInpaint(){if(!currentImage)return;inpaintImg=new Image();inpaintImg.onload=()=>{const canvas=$('inpaintCanvas'),ctx=canvas.getContext('2d');canvas.width=inpaintImg.width;canvas.height=inpaintImg.height;ctx.drawImage(inpaintImg,0,0);maskCanvas=document.createElement('canvas');maskCanvas.width=inpaintImg.width;maskCanvas.height=inpaintImg.height;maskCtx=maskCanvas.getContext('2d');maskCtx.fillStyle='black';maskCtx.fillRect(0,0,maskCanvas.width,maskCanvas.height);$('inpaintContainer').style.display='block';setupInpaintEvents(canvas,ctx);};inpaintImg.src=currentImage;showTab('inpaint');closeModal();}
+function sendToUpscale(){if(!currentImage)return;upscaleData=currentImage;$('upscalePreview').src=currentImage;$('upscalePreview').style.display='block';showTab('upscale');closeModal();}
+async function showMetadata(){if(!currentImage)return;try{const res=await fetch('/api/metadata',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:currentImage})});const data=await res.json();alert(data.raw||'No metadata found');}catch(e){alert('Error: '+e.message);}}
+
+// Export/Import
+function exportData(){const data={settings,history:JSON.parse(localStorage.getItem('sdproxy_history')||'[]')};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sdproxy-backup.json';a.click();}
+function importData(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{try{const data=JSON.parse(e.target.result);if(data.settings)localStorage.setItem('sdproxy_settings',JSON.stringify(data.settings));alert('Imported successfully');location.reload();}catch(e){alert('Invalid file');}};reader.readAsText(file);}
+
+// Keyboard shortcuts
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();generate();}if(e.ctrlKey&&e.key==='s'){e.preventDefault();savePreset();}if(e.ctrlKey&&e.key==='q'){e.preventDefault();addToQueue();}if(e.key==='Escape')closeModal();});
+
+// Drag and drop
+['img2imgDrop','inpaintDrop','upscaleDrop'].forEach(id=>{
+    const el=$(id);if(!el)return;
+    el.ondragover=e=>{e.preventDefault();el.classList.add('dragover');};
+    el.ondragleave=()=>el.classList.remove('dragover');
+    el.ondrop=e=>{e.preventDefault();el.classList.remove('dragover');const file=e.dataTransfer.files[0];if(file&&file.type.startsWith('image/')){const input=el.querySelector('input[type=file]');const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;input.dispatchEvent(new Event('change'));}};
+});
+
+function showWildcardHelp(){alert('Wildcards: Use {option1|option2|option3} for random selection\\nExample: {red|blue|green} hair');}
+
+// Init
+loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadFolders();loadCosts();onBackendChange();
+</script>
+</body></html>
