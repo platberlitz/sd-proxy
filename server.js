@@ -427,7 +427,8 @@ async function fetchModels() {
             const models = await res.json();
             $('modelList').innerHTML = (models.data || models).map(m => '<option value="' + (m.title || m.id || m) + '">').join('');
         } else if (backend === 'custom') {
-            const baseUrl = $('customUrl').value.replace(/\\/images\\/generations.*/, '/models').replace(/\\/chat\\/completions.*/, '/models');
+            let baseUrl = $('customUrl').value.replace(/\\/images\\/generations.*/, '').replace(/\\/chat\\/completions.*/, '');
+            if (!baseUrl.endsWith('/models')) baseUrl = baseUrl.replace(/\\/$/, '') + '/models';
             const res = await fetch('/proxy/models?url=' + encodeURIComponent(baseUrl) + '&key=' + encodeURIComponent(apiKey));
             const data = await res.json();
             const models = data.data || data.models || data;
