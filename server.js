@@ -570,15 +570,21 @@ const backends = {
         });
         const data = await res.json();
         
-        // Extract image URLs from response
-        const content = data.choices?.[0]?.message?.content || '';
-        const urls = content.match(/https?:\/\/[^\s\)]+\.(png|jpg|jpeg|webp|gif)/gi) || [];
+        // Extract images from response
+        const msg = data.choices?.[0]?.message || {};
         
+        // Check for images array (Gemini format)
+        if (msg.images?.length) {
+            return { data: msg.images.map(img => ({ url: img.image_url?.url || img.url })) };
+        }
+        
+        // Check for URLs in content
+        const content = msg.content || '';
+        const urls = content.match(/https?:\/\/[^\s\)]+\.(png|jpg|jpeg|webp|gif)/gi) || [];
         if (urls.length) {
             return { data: urls.map(url => ({ url })) };
         }
         
-        // If no image URLs found, return the text response as error
         throw new Error(content || JSON.stringify(data));
     }
 };
