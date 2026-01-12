@@ -1,8 +1,6 @@
 # SD Proxy
 
-Multi-backend image generation proxy with OpenAI-compatible API and feature-rich web dashboard.
-
-![Dashboard](https://img.shields.io/badge/Dashboard-Web_UI-4ade80) ![API](https://img.shields.io/badge/API-OpenAI_Compatible-blue) ![License](https://img.shields.io/badge/License-MIT-green)
+Full-featured image generation proxy with OpenAI-compatible API and comprehensive web dashboard.
 
 ## Quick Start
 
@@ -14,71 +12,109 @@ npm start
 # Open http://localhost:3001
 ```
 
-## Features
+## Features Overview
 
 ### 🎨 Generation Modes
 
 | Mode | Description |
 |------|-------------|
-| **Text-to-Image** | Generate images from text prompts |
-| **Img2Img** | Transform existing images with prompts |
-| **Inpainting** | Edit specific areas with mask painting |
-| **Upscaling** | Enhance resolution with ESRGAN/R-ESRGAN |
+| **Text-to-Image** | Generate from text prompts with wildcards and matrix expansion |
+| **Img2Img** | Transform images with adjustable strength |
+| **Inpainting** | Paint masks to edit specific areas |
+| **Outpainting** | Extend images beyond borders (left/right/up/down) |
+| **Upscaling** | 2x/4x with ESRGAN, R-ESRGAN, Anime6B |
+| **ControlNet** | Guided generation with pose, depth, canny, lineart |
+| **Variations** | Generate slight variations of existing images |
+| **Tiled/Seamless** | Create tileable textures |
 
-### 🔌 Supported Backends
+### 🔌 Supported Backends (10+)
 
-| Backend | API Key | Features | Best For |
-|---------|---------|----------|----------|
-| **Local A1111** | No | Full features, LoRAs, ControlNet | Maximum control |
-| **Local ComfyUI** | No | Workflow-based, flexible | Advanced users |
-| **Pollinations** | No | Free, fast | Quick testing |
-| **NanoGPT** | Yes | Flux models | Quality results |
-| **PixAI** | Yes | Anime, LoRAs | Anime art |
-| **Stability AI** | Yes | SDXL official | Production use |
-| **Replicate** | Yes | Many models | Model variety |
-| **Fal.ai** | Yes | Fast inference | Speed |
-| **Together AI** | Yes | Open models | Cost-effective |
-| **Custom** | Optional | Any OpenAI-compatible API | Flexibility |
+| Backend | API Key | Best For |
+|---------|---------|----------|
+| **Local A1111** | No | Full control, all features |
+| **Local ComfyUI** | No | Advanced workflows |
+| **Pollinations** | No | Free, quick testing |
+| **NanoGPT** | Yes | Flux models |
+| **PixAI** | Yes | Anime, LoRAs |
+| **Stability AI** | Yes | Official SDXL |
+| **Replicate** | Yes | Model variety |
+| **Fal.ai** | Yes | Fast inference |
+| **Together AI** | Yes | Cost-effective |
+| **Custom** | Optional | Any OpenAI-compatible API |
 
 ### 🛠️ Generation Features
 
-- **40+ Style Presets** - Anime, Photorealistic, Oil Painting, Cyberpunk, Ghibli, and more
-- **Wildcards** - Random selection with `{option1|option2|option3}` syntax
-- **Hires Fix** - Two-pass generation for higher resolution
+- **40+ Style Presets** - Anime, Photorealistic, Cyberpunk, Ghibli, etc.
+- **Wildcards** - `{red|blue|green} hair` for random selection
+- **Prompt Matrix** - `[a|b] [c|d]` generates all 4 combinations
+- **Hires Fix** - Two-pass high-resolution generation
 - **Face Restore** - GFPGAN/CodeFormer integration
-- **Batch Generation** - Generate multiple images at once
-- **Seed Control** - Reproducible results with random seed button
+- **Batch Generation** - Multiple images at once
+- **Seed Control** - Reproducible results
+
+### 🎛️ ControlNet Support
+
+| Preprocessor | Use Case |
+|--------------|----------|
+| Canny | Edge detection |
+| Depth (MiDaS) | Depth maps |
+| OpenPose | Pose estimation |
+| Lineart | Line extraction |
+| Soft Edge | Soft boundaries |
+| Scribble | Hand-drawn guides |
+| Tile | Detail enhancement |
+
+### 🔧 Tools
+
+- **Auto-Caption** - BLIP/CLIP image interrogation
+- **Prompt Enhancement** - AI improves your prompts
+- **Image Comparison** - Side-by-side slider comparison
+- **X/Y/Z Plot** - Compare settings in a grid
+- **Batch from File** - Process multiple prompts from text
+- **PNG Metadata** - Extract generation parameters
+
+### 📦 Model Management
+
+- **Model Switching** - Change A1111 checkpoint from UI
+- **VAE Selection** - Choose VAE for generation
+- **LoRA Browser** - Browse and insert LoRAs with one click
+- **Civitai Download** - Download models directly from Civitai
+- **Embedding Support** - Use textual inversions
 
 ### 📋 Organization
 
-- **Queue System** - Queue multiple prompts, process sequentially
-- **History** - Searchable generation history with thumbnails
-- **Favorites** - Star and save your best images
-- **Folders** - Organize history into collections
-- **Presets** - Save and load generation settings
-- **Export/Import** - Backup all data to JSON
+- **Queue System** - Queue prompts, process sequentially
+- **History** - Searchable with thumbnails
+- **Favorites** - Star and save best images
+- **Folders** - Organize into collections
+- **Presets** - Save/load generation settings
+- **Templates** - Reusable prompt snippets
+- **Export/Import** - Backup all data
 
 ### 🖥️ User Interface
 
 - **Dark Green Theme** - Easy on the eyes
-- **Prompt Autocomplete** - Danbooru tag suggestions
-- **Drag & Drop** - Drop images for img2img/inpaint/upscale
-- **Image Modal** - Full-size view with action buttons
-- **Metadata Viewer** - Extract PNG generation parameters
-- **Mobile Friendly** - Responsive design
+- **Gallery View** - Masonry layout for favorites
+- **Progress Bar** - Real-time generation progress
+- **Image Info Overlay** - Params on hover
+- **Prompt Autocomplete** - 150+ Danbooru tags
+- **Prompt Tags Display** - Visual tag management
+- **Drag & Drop** - Drop images anywhere
+- **Mobile Responsive** - Works on all devices
 
 ### ⌨️ Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl + Enter` | Generate image |
+| `Ctrl + Enter` | Generate |
 | `Ctrl + S` | Save preset |
 | `Ctrl + Q` | Add to queue |
+| `←` / `→` | Navigate gallery |
 | `Escape` | Close modal |
 
 ### 💰 Cost Tracking
 
-Track API usage costs per backend with reset option.
+Track API usage costs per backend with detailed breakdown.
 
 ---
 
@@ -93,104 +129,105 @@ POST /v1/images/generations
 ```bash
 curl http://localhost:3001/v1/images/generations \
   -H "Content-Type: application/json" \
-  -H "X-Backend: pollinations" \
+  -H "X-Backend: local" \
+  -H "X-Local-Url: http://127.0.0.1:7860" \
   -d '{
-    "prompt": "a cat in space, digital art",
-    "negative_prompt": "blurry, low quality",
+    "prompt": "masterpiece, 1girl, smile",
+    "negative_prompt": "lowres, bad anatomy",
     "width": 512,
-    "height": 512,
+    "height": 768,
     "steps": 25,
-    "cfg_scale": 7
+    "cfg_scale": 7,
+    "sampler": "dpmpp_2m",
+    "scheduler": "karras"
   }'
 ```
 
-#### Headers
+### Headers
 
 | Header | Description |
 |--------|-------------|
-| `X-Backend` | `local`, `comfyui`, `pollinations`, `nanogpt`, `pixai`, `stability`, `replicate`, `fal`, `together`, `custom` |
-| `X-Local-Url` | Local backend URL (default: `http://127.0.0.1:7860`) |
+| `X-Backend` | Backend to use |
+| `X-Local-Url` | A1111/ComfyUI URL |
 | `X-Custom-Url` | Custom endpoint URL |
-| `Authorization` | `Bearer <api_key>` for paid backends |
+| `Authorization` | `Bearer <key>` |
 
-#### Body Parameters
+### Body Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `prompt` | string | required | Image description |
-| `negative_prompt` | string | "" | What to avoid |
-| `width` | number | 512 | Image width |
-| `height` | number | 768 | Image height |
-| `steps` | number | 25 | Sampling steps |
-| `cfg_scale` | number | 7 | Prompt adherence |
-| `sampler` | string | "dpmpp_2m" | Sampling method |
-| `scheduler` | string | "karras" | Noise schedule |
-| `seed` | number | -1 | Random seed |
-| `n` | number | 1 | Batch size |
-| `init_image` | string | - | Base64 image for img2img |
-| `strength` | number | 0.75 | Denoising strength |
-| `mask` | string | - | Base64 mask for inpainting |
-| `hires_fix` | boolean | false | Enable hires fix |
-| `face_restore` | boolean | false | Enable face restoration |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `prompt` | string | Image description |
+| `negative_prompt` | string | What to avoid |
+| `width` | number | Image width |
+| `height` | number | Image height |
+| `steps` | number | Sampling steps |
+| `cfg_scale` | number | Prompt adherence |
+| `sampler` | string | Sampling method |
+| `scheduler` | string | Noise schedule |
+| `seed` | number | Random seed |
+| `n` | number | Batch size |
+| `init_image` | string | Base64 for img2img |
+| `mask` | string | Base64 mask for inpainting |
+| `strength` | number | Denoising strength |
+| `controlnet` | object | ControlNet settings |
+| `hires_fix` | boolean | Enable hires fix |
+| `face_restore` | boolean | Face restoration |
+| `tiling` | boolean | Seamless tiling |
+| `outpaint` | object | Outpainting settings |
 
-### Upscale Image
+### ControlNet Object
 
-```bash
-POST /api/upscale
+```json
+{
+  "controlnet": {
+    "image": "<base64>",
+    "preprocessor": "canny",
+    "model": "control_v11p_sd15_canny",
+    "weight": 1.0,
+    "guidance_start": 0,
+    "guidance_end": 1
+  }
+}
 ```
 
-```bash
-curl http://localhost:3001/api/upscale \
-  -H "Content-Type: application/json" \
-  -d '{
-    "image": "<base64_image>",
-    "scale": 2,
-    "upscaler": "R-ESRGAN 4x+"
-  }'
+### All Endpoints
+
 ```
+POST /v1/images/generations     Generate images
+POST /v1/chat/completions       Chat-based generation
+GET  /v1/models                 List backends
 
-### Queue Management
+POST /api/upscale               Upscale image
+POST /api/interrogate           Auto-caption (BLIP/CLIP)
+POST /api/interrupt             Stop generation
+GET  /api/a1111/progress        Generation progress
+GET  /api/a1111/models          List models/VAEs/LoRAs
+POST /api/a1111/model           Switch model/VAE
+POST /api/controlnet/preprocess Preprocess for ControlNet
+POST /api/civitai/download      Download from Civitai
+POST /api/enhance-prompt        AI prompt enhancement
+POST /api/xyz-plot              X/Y/Z comparison grid
+POST /api/batch-file            Batch from prompts list
+POST /api/metadata              Extract PNG metadata
 
-```bash
-GET  /api/queue              # List queue
-POST /api/queue              # Add to queue
-DELETE /api/queue/:id        # Remove from queue
-POST /api/queue/process      # Process all queued items
-```
+GET  /api/queue                 List queue
+POST /api/queue                 Add to queue
+DELETE /api/queue/:id           Remove from queue
+POST /api/queue/process         Process all
 
-### History & Favorites
-
-```bash
-GET    /api/history              # List history (supports ?search=&folder=&limit=&offset=)
-DELETE /api/history/:id          # Delete history item
-DELETE /api/history              # Clear all history
-
-GET    /api/favorites            # List favorites
-POST   /api/favorites            # Add favorite
-DELETE /api/favorites/:id        # Remove favorite
-```
-
-### Presets & Folders
-
-```bash
-GET    /api/presets              # List presets
-POST   /api/presets              # Save preset
-DELETE /api/presets/:id          # Delete preset
-
-GET    /api/folders              # List folders
-POST   /api/folders              # Create folder
-DELETE /api/folders/:id          # Delete folder
-```
-
-### Other Endpoints
-
-```bash
-GET  /v1/models                  # List backends
-POST /v1/chat/completions        # Chat-based generation (ST compatible)
-GET  /api/costs                  # Get cost tracking data
-DELETE /api/costs                # Reset costs
-POST /api/metadata               # Extract PNG metadata
-GET  /proxy/models?url=&key=     # Proxy for fetching external model lists
+GET  /api/history               List history
+DELETE /api/history             Clear history
+GET  /api/favorites             List favorites
+POST /api/favorites             Add favorite
+GET  /api/presets               List presets
+POST /api/presets               Save preset
+GET  /api/templates             List templates
+POST /api/templates             Save template
+GET  /api/folders               List folders
+POST /api/folders               Create folder
+GET  /api/costs                 Cost tracking
+DELETE /api/costs               Reset costs
+GET  /api/progress              SSE progress stream
 ```
 
 ---
@@ -200,80 +237,68 @@ GET  /proxy/models?url=&key=     # Proxy for fetching external model lists
 ### Automatic1111 WebUI
 
 ```bash
-# Start with API enabled
 ./webui.sh --api
-# or Windows
-webui-user.bat --api
 ```
 
-Default URL: `http://127.0.0.1:7860`
+For ControlNet, install the [sd-webui-controlnet](https://github.com/Mikubill/sd-webui-controlnet) extension.
 
 ### ComfyUI
 
 ```bash
-# API enabled by default
 python main.py
 ```
 
-Default URL: `http://127.0.0.1:8188`
-
 ---
 
-## Environment Variables
+## Prompt Syntax
 
-```bash
-PORT=3001                              # Server port
+### Wildcards
+```
+{red|blue|green} hair    → randomly picks one
+```
+
+### Matrix (generates all combinations)
+```
+[happy|sad] [cat|dog]    → 4 images: happy cat, happy dog, sad cat, sad dog
+```
+
+### Weights
+```
+(important tag:1.3)      → increases weight
+(less important:0.7)     → decreases weight
+```
+
+### LoRA
+```
+<lora:name:0.7>          → applies LoRA with weight 0.7
+```
+
+### Regional Prompting
+```
+prompt1 BREAK prompt2    → different prompts for different regions
 ```
 
 ---
 
 ## Data Storage
 
-All data is stored in the `data/` directory:
-
 ```
 data/
-├── history.json      # Generation history
-├── favorites.json    # Favorited images
-├── folders.json      # Folder organization
-├── presets.json      # Saved presets
-└── costs.json        # Cost tracking
+├── history.json
+├── favorites.json
+├── folders.json
+├── presets.json
+├── templates.json
+└── costs.json
 ```
 
 ---
 
-## Wildcard Syntax
+## Environment Variables
 
-Use curly braces with pipe-separated options for random selection:
-
+```bash
+PORT=3001
 ```
-{red|blue|green} hair, {happy|sad|angry} expression
-```
-
-Each generation randomly picks one option from each wildcard.
-
----
-
-## Style Presets
-
-Available styles that append tags to your prompt:
-
-- Anime, Photorealistic, Digital Art, Oil Painting, Watercolor
-- Pencil Sketch, Ink Drawing, Pixel Art, 3D Render
-- Cyberpunk, Fantasy, Comic Book, Manga, Chibi, Ghibli
-- Film Noir, Vaporwave, Dark Fantasy, Cinematic
-- And many more...
-
----
-
-## Tips
-
-1. **Free Generation**: Use Pollinations backend - no API key needed
-2. **Best Quality**: Local A1111 with custom models and LoRAs
-3. **Fastest**: Fal.ai or Pollinations
-4. **Anime**: PixAI with anime models and LoRAs
-5. **Inpainting**: Only works with Local A1111 backend
-6. **Upscaling**: Requires Local A1111 with ESRGAN models
 
 ---
 
