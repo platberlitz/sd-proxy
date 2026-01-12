@@ -27,44 +27,49 @@ app.get('/', (req, res) => res.send(`<!DOCTYPE html><html><head>
 <title>SD Proxy</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui;background:#0a0a1a;color:#e0e0e0;min-height:100vh;padding:20px}
-.container{max-width:1200px;margin:0 auto}
-h1{color:#e94560;margin-bottom:20px}
-.tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
-.tab{padding:10px 20px;background:#1a1a2e;border:none;color:#e0e0e0;cursor:pointer;border-radius:8px}
-.tab.active{background:#e94560}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0d1a0d;color:#c8d6c8;min-height:100vh;padding:12px;font-size:13px}
+.container{max-width:1000px;margin:0 auto}
+h1{color:#4ade80;font-size:18px;margin-bottom:8px}
+.tabs{display:flex;gap:4px;margin-bottom:12px}
+.tab{padding:6px 14px;background:#1a2e1a;border:1px solid #2d4a2d;color:#8fbc8f;cursor:pointer;border-radius:4px;font-size:12px}
+.tab:hover{background:#243824}.tab.active{background:#2d5a2d;color:#4ade80;border-color:#4ade80}
 .tab-content{display:none}.tab-content.active{display:block}
-.card{background:#16213e;padding:20px;border-radius:12px;margin-bottom:20px}
-label{display:block;margin:12px 0 4px;color:#888;font-size:13px}
-input,select,textarea{width:100%;padding:10px;background:#0f0f23;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:14px}
-textarea{min-height:80px;resize:vertical}
-button{padding:12px 24px;background:#e94560;border:none;color:#fff;border-radius:8px;cursor:pointer;font-size:14px;margin-top:12px}
-button:hover{background:#ff6b6b}
-button:disabled{opacity:0.5;cursor:not-allowed}
-.btn-secondary{background:#333}
-.btn-sm{padding:6px 12px;font-size:12px}
-.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.result{margin-top:20px}
-.result img{max-width:100%;border-radius:8px;cursor:pointer}
-.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
-.img-card{background:#0f0f23;padding:8px;border-radius:8px;text-align:center}
-.img-card img{width:100%;border-radius:4px}
-.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;justify-content:center;align-items:center}
+.card{background:#142014;border:1px solid #2d4a2d;padding:12px;border-radius:6px;margin-bottom:10px}
+label{display:block;margin:8px 0 2px;color:#6b8e6b;font-size:11px;text-transform:uppercase;letter-spacing:0.5px}
+input,select,textarea{width:100%;padding:6px 8px;background:#0d1a0d;border:1px solid #2d4a2d;border-radius:4px;color:#c8d6c8;font-size:13px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#4ade80}
+textarea{min-height:60px;resize:vertical;font-family:inherit}
+button{padding:6px 14px;background:#2d5a2d;border:1px solid #4ade80;color:#4ade80;border-radius:4px;cursor:pointer;font-size:12px}
+button:hover{background:#3d6a3d}button:disabled{opacity:0.4;cursor:not-allowed}
+.btn-primary{background:#4ade80;color:#0d1a0d;font-weight:600}
+.btn-primary:hover{background:#6bee9a}
+.btn-sm{padding:3px 8px;font-size:11px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+.row-4{grid-template-columns:repeat(4,1fr)}
+.result{margin-top:12px}
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.img-card{background:#1a2e1a;padding:6px;border-radius:4px;text-align:center}
+.img-card img{width:100%;border-radius:3px;cursor:pointer}
+.img-card a{color:#4ade80;font-size:11px}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999;justify-content:center;align-items:center}
 .modal img{max-width:95%;max-height:95%;object-fit:contain}
 .modal.show{display:flex}
-.history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:400px;overflow-y:auto}
-.history-item{background:#0f0f23;padding:6px;border-radius:6px;cursor:pointer}
-.history-item img{width:100%;border-radius:4px}
-.lora-list{max-height:200px;overflow-y:auto;background:#0f0f23;border-radius:6px;padding:8px;margin-top:8px}
-.lora-item{display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid #333}
+.history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;max-height:300px;overflow-y:auto}
+.history-item{background:#1a2e1a;padding:4px;border-radius:4px;cursor:pointer}
+.history-item img{width:100%;border-radius:3px}
+.lora-list{max-height:150px;overflow-y:auto;background:#0d1a0d;border:1px solid #2d4a2d;border-radius:4px;padding:6px;margin-top:6px}
+.lora-item{display:flex;align-items:center;gap:6px;padding:4px;border-bottom:1px solid #1a2e1a;font-size:12px}
 .lora-item:last-child{border:none}
 .lora-item input[type=checkbox]{width:auto}
-.lora-item input[type=number]{width:60px}
+.lora-item input[type=number]{width:50px}
+.flex{display:flex;gap:8px;align-items:center}
+.mt{margin-top:10px}
+code{background:#1a2e1a;padding:8px;border-radius:4px;display:block;font-size:11px;color:#8fbc8f}
+#status{font-size:12px;padding:6px 0}
 </style>
 </head><body>
 <div class="container">
 <h1>🎨 SD Proxy</h1>
-<p style="color:#888;margin-bottom:20px">Multi-backend image generation with OpenAI-compatible API</p>
 
 <div class="tabs">
 <button class="tab active" onclick="showTab('generate')">Generate</button>
@@ -76,64 +81,71 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 
 <div id="tab-generate" class="tab-content active">
 <div class="card">
-<label>Backend</label>
+<div class="row">
+<div><label>Backend</label>
 <select id="backend" onchange="onBackendChange()">
-<option value="local">Local (A1111/ComfyUI)</option>
+<option value="local">Local A1111</option>
+<option value="comfyui">Local ComfyUI</option>
 <option value="pollinations">Pollinations (Free)</option>
 <option value="nanogpt">NanoGPT</option>
 <option value="pixai">PixAI</option>
-<option value="custom">Custom Endpoint</option>
-</select>
-
-<div id="customEndpoint" style="display:none">
-<label>Custom URL</label>
-<input id="customUrl" placeholder="https://your-api.com/v1/images/generations">
+<option value="custom">Custom</option>
+</select></div>
+<div><label>API Key</label><input type="password" id="apiKey" placeholder="If required"></div>
+<div><label>Model <button class="btn-sm" onclick="fetchModels()" style="float:right">↻</button></label>
+<input id="model" list="modelList" placeholder="Type or fetch">
+<datalist id="modelList"></datalist></div>
 </div>
 
-<label>API Key (if required)</label>
-<input type="password" id="apiKey" placeholder="Leave empty for free backends">
-
-<label>Model <button class="btn-sm btn-secondary" onclick="fetchModels()" style="float:right">🔄 Fetch</button></label>
-<input id="model" list="modelList" placeholder="Type or select model">
-<datalist id="modelList"></datalist>
+<div id="customEndpoint" style="display:none;margin-top:8px">
+<label>Custom URL</label>
+<input id="customUrl" placeholder="https://api.example.com/v1">
+</div>
 
 <label>Prompt</label>
-<textarea id="prompt" placeholder="masterpiece, best quality, 1girl, ">masterpiece, best quality, highly detailed, </textarea>
+<textarea id="prompt" placeholder="Describe your image...">masterpiece, best quality, highly detailed, absurdres, ultra-detailed, intricate details, sharp focus, </textarea>
 
 <label>Negative Prompt</label>
-<textarea id="negative" rows="2">lowres, bad anatomy, bad hands, text, error, worst quality, low quality, jpeg artifacts, watermark, blurry</textarea>
+<textarea id="negative" rows="3">lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name, deformed, disfigured, mutation, mutated, ugly, disgusting, amputation, bad proportions, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck, out of frame, duplicate, morbid, mutilated</textarea>
 
-<div class="row">
+<div class="row row-4">
 <div><label>Width</label><input type="number" id="width" value="512" step="64"></div>
 <div><label>Height</label><input type="number" id="height" value="768" step="64"></div>
-<div><label>Steps</label><input type="number" id="steps" value="20"></div>
+<div><label>Steps</label><input type="number" id="steps" value="25"></div>
 <div><label>CFG</label><input type="number" id="cfg" value="7" step="0.5"></div>
 </div>
 
-<div class="row">
+<div class="row row-4">
 <div><label>Sampler</label>
 <select id="sampler">
-<option value="">Default</option>
-<option value="Euler a">Euler a</option>
-<option value="Euler">Euler</option>
-<option value="DPM++ 2M Karras">DPM++ 2M Karras</option>
-<option value="DPM++ SDE Karras">DPM++ SDE Karras</option>
-<option value="DDIM">DDIM</option>
+<option value="euler_ancestral">Euler a</option>
+<option value="euler">Euler</option>
+<option value="dpmpp_2m" selected>DPM++ 2M</option>
+<option value="dpmpp_sde">DPM++ SDE</option>
+<option value="ddim">DDIM</option>
+<option value="uni_pc">UniPC</option>
 </select></div>
-<div><label>Seed (-1 = random)</label><input type="number" id="seed" value="-1"></div>
+<div><label>Scheduler</label>
+<select id="scheduler">
+<option value="karras" selected>Karras</option>
+<option value="normal">Normal</option>
+<option value="exponential">Exponential</option>
+<option value="sgm_uniform">SGM Uniform</option>
+</select></div>
+<div><label>Seed</label><input type="number" id="seed" value="-1"></div>
 <div><label>Batch</label><input type="number" id="batch" value="1" min="1" max="4"></div>
 </div>
 
-<div id="loraSection">
+<div id="loraSection" class="mt">
 <label>Active LoRAs</label>
-<div id="activeLoraList" style="font-size:13px;color:#888">None selected</div>
+<div id="activeLoraList" style="font-size:12px;color:#6b8e6b">None</div>
 </div>
 
-<div style="margin-top:16px">
-<button onclick="generate()" id="genBtn">🎨 Generate</button>
-<button onclick="addToQueue()" class="btn-secondary">+ Add to Queue</button>
+<div class="flex mt">
+<button onclick="generate()" id="genBtn" class="btn-primary">Generate</button>
+<button onclick="addToQueue()">+ Queue</button>
 </div>
-<div id="status" style="margin-top:12px"></div>
+<div id="status"></div>
 </div>
 
 <div class="result" id="result"></div>
@@ -141,79 +153,63 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 
 <div id="tab-models" class="tab-content">
 <div class="card">
-<h3>📦 Models</h3>
-<p style="color:#666;font-size:13px;margin-bottom:12px">Load models from Civitai or local path. For local A1111, models are auto-detected.</p>
-
-<label>Load from Civitai URL</label>
-<div class="row">
-<input id="civitaiUrl" placeholder="https://civitai.com/models/12345 or model version ID">
-<button onclick="loadCivitaiModel()" class="btn-sm">Load Info</button>
+<label>Civitai Model URL</label>
+<div class="flex">
+<input id="civitaiUrl" placeholder="https://civitai.com/models/12345" style="flex:1">
+<button onclick="loadCivitaiModel()" class="btn-sm">Load</button>
 </div>
-<div id="civitaiInfo" style="margin-top:12px"></div>
+<div id="civitaiInfo" class="mt"></div>
 
-<label style="margin-top:20px">Available Models (from backend)</label>
-<div id="modelsDisplay" style="margin-top:8px;color:#888">Select a backend and click refresh</div>
-<button onclick="refreshModels()" class="btn-sm btn-secondary" style="margin-top:8px">Refresh Models</button>
+<label class="mt">Backend Models</label>
+<div id="modelsDisplay" style="color:#6b8e6b;font-size:12px">Click refresh after selecting backend</div>
+<button onclick="refreshModels()" class="btn-sm mt">Refresh</button>
 </div>
 </div>
 
 <div id="tab-loras" class="tab-content">
 <div class="card">
-<h3>🎭 LoRAs</h3>
-<p style="color:#666;font-size:13px;margin-bottom:12px">Manage LoRAs for generation. For local backends, LoRAs are auto-detected.</p>
-
-<label>Add LoRA from Civitai</label>
-<div class="row">
-<input id="loraUrl" placeholder="Civitai LoRA URL or ID">
+<label>Add from Civitai</label>
+<div class="flex">
+<input id="loraUrl" placeholder="Civitai LoRA URL" style="flex:1">
 <button onclick="addCivitaiLora()" class="btn-sm">Add</button>
 </div>
 
-<label style="margin-top:16px">Manual LoRA (for PixAI/other backends)</label>
-<div class="row">
-<input id="loraId" placeholder="LoRA ID">
-<input id="loraWeight" type="number" value="0.7" min="0" max="1" step="0.1" style="width:80px">
+<label class="mt">Manual LoRA</label>
+<div class="flex">
+<input id="loraId" placeholder="LoRA ID" style="flex:1">
+<input id="loraWeight" type="number" value="0.7" min="0" max="1" step="0.1" style="width:60px">
 <button onclick="addManualLora()" class="btn-sm">Add</button>
 </div>
 
-<label style="margin-top:16px">Your LoRAs</label>
-<div id="loraList" class="lora-list">No LoRAs added</div>
+<label class="mt">Your LoRAs</label>
+<div id="loraList" class="lora-list">No LoRAs</div>
 </div>
 </div>
 
 <div id="tab-history" class="tab-content">
 <div class="card">
-<h3>📜 History</h3>
 <div id="historyGrid" class="history-grid"></div>
-<button onclick="clearHistory()" class="btn-secondary btn-sm" style="margin-top:12px">Clear</button>
+<button onclick="clearHistory()" class="btn-sm mt">Clear</button>
 </div>
 </div>
 
 <div id="tab-settings" class="tab-content">
 <div class="card">
-<h3>⚙️ Settings</h3>
-
-<label>Local Backend URL</label>
+<label>Local A1111 URL</label>
 <input id="localUrl" value="http://127.0.0.1:7860" onchange="saveSettings()">
 
+<label>ComfyUI URL</label>
+<input id="comfyUrl" value="http://127.0.0.1:8188" onchange="saveSettings()">
+
 <label>Default Quality Tags</label>
-<input id="qualityTags" value="masterpiece, best quality, highly detailed, " onchange="saveSettings()">
+<input id="qualityTags" value="masterpiece, best quality, highly detailed, absurdres, ultra-detailed, intricate details, sharp focus, " onchange="saveSettings()">
 
-<label>Default Negative</label>
-<textarea id="defaultNeg" rows="2" onchange="saveSettings()">lowres, bad anatomy, bad hands, text, error, worst quality, low quality, jpeg artifacts, watermark, blurry</textarea>
-
-<h4 style="margin-top:20px;color:#e94560">API Endpoints</h4>
-<p style="color:#666;font-size:13px;margin:8px 0">Use these endpoints from your apps:</p>
-<code style="display:block;background:#0f0f23;padding:12px;border-radius:6px;font-size:12px;margin-top:8px">
-POST /v1/images/generations<br>
-POST /v1/chat/completions (with image generation)<br>
-GET /v1/models
-</code>
+<label class="mt">API Endpoints</label>
+<code>POST /v1/images/generations<br>POST /v1/chat/completions<br>GET /v1/models</code>
 </div>
 </div>
 
-<div class="modal" id="modal" onclick="this.classList.remove('show')">
-<img id="modalImg">
-</div>
+<div class="modal" id="modal" onclick="this.classList.remove('show')"><img id="modalImg"></div>
 </div>
 
 <script>
@@ -232,24 +228,20 @@ function showTab(id) {
 function showModal(url) { $('modalImg').src = url; $('modal').classList.add('show'); }
 
 function onBackendChange() {
-    const backend = $('backend').value;
-    $('customEndpoint').style.display = backend === 'custom' ? 'block' : 'none';
-    $('loraSection').style.display = ['local', 'pixai'].includes(backend) ? 'block' : 'none';
+    const b = $('backend').value;
+    $('customEndpoint').style.display = b === 'custom' ? 'block' : 'none';
+    $('loraSection').style.display = ['local', 'comfyui', 'pixai'].includes(b) ? 'block' : 'none';
 }
 
 function saveSettings() {
-    settings = {
-        localUrl: $('localUrl').value,
-        qualityTags: $('qualityTags').value,
-        defaultNeg: $('defaultNeg').value
-    };
+    settings = { localUrl: $('localUrl').value, comfyUrl: $('comfyUrl').value, qualityTags: $('qualityTags').value };
     localStorage.setItem('sdproxy_settings', JSON.stringify(settings));
 }
 
 function loadSettings() {
     if (settings.localUrl) $('localUrl').value = settings.localUrl;
+    if (settings.comfyUrl) $('comfyUrl').value = settings.comfyUrl;
     if (settings.qualityTags) $('qualityTags').value = settings.qualityTags;
-    if (settings.defaultNeg) $('defaultNeg').value = settings.defaultNeg;
 }
 
 async function generate() {
@@ -260,51 +252,42 @@ async function generate() {
     
     try {
         const backend = $('backend').value;
-        const apiKey = $('apiKey').value;
-        const prompt = $('prompt').value;
-        const negative = $('negative').value;
-        const width = parseInt($('width').value);
-        const height = parseInt($('height').value);
-        const steps = parseInt($('steps').value);
-        const cfg = parseFloat($('cfg').value);
-        const sampler = $('sampler').value;
-        const seed = parseInt($('seed').value);
-        const batch = parseInt($('batch').value);
-        const model = $('model').value;
-        
-        const activeLoras = loras.filter(l => l.active);
-        
         const body = {
-            prompt, negative_prompt: negative,
-            width, height, steps, cfg_scale: cfg,
-            sampler, seed: seed >= 0 ? seed : undefined,
-            n: batch, model,
-            loras: activeLoras.length ? activeLoras.map(l => ({ id: l.id, weight: l.weight })) : undefined
+            prompt: $('prompt').value,
+            negative_prompt: $('negative').value,
+            width: parseInt($('width').value),
+            height: parseInt($('height').value),
+            steps: parseInt($('steps').value),
+            cfg_scale: parseFloat($('cfg').value),
+            sampler: $('sampler').value,
+            scheduler: $('scheduler').value,
+            seed: parseInt($('seed').value),
+            n: parseInt($('batch').value),
+            model: $('model').value,
+            loras: loras.filter(l => l.active).map(l => ({ id: l.id, weight: l.weight }))
         };
+        if (body.seed < 0) delete body.seed;
+        if (!body.loras.length) delete body.loras;
         
-        let url = '/v1/images/generations';
-        let headers = { 'Content-Type': 'application/json' };
-        
-        if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
-        headers['X-Backend'] = backend;
+        let headers = { 'Content-Type': 'application/json', 'X-Backend': backend };
+        if ($('apiKey').value) headers['Authorization'] = 'Bearer ' + $('apiKey').value;
         if (backend === 'local') headers['X-Local-Url'] = $('localUrl').value;
+        if (backend === 'comfyui') headers['X-Local-Url'] = $('comfyUrl').value;
         if (backend === 'custom') headers['X-Custom-Url'] = $('customUrl').value;
         
-        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+        const res = await fetch('/v1/images/generations', { method: 'POST', headers, body: JSON.stringify(body) });
         const data = await res.json();
         
         if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
         
         if (data.data?.length) {
-            const urls = data.data.map(d => d.url || d.b64_json);
-            status.textContent = '✅ Done!';
+            const urls = data.data.map(d => d.url || (d.b64_json?.startsWith('data:') ? d.b64_json : 'data:image/png;base64,' + d.b64_json));
+            status.textContent = '✅ Done';
             $('result').innerHTML = '<div class="img-grid">' + urls.map(u => 
-                '<div class="img-card"><img src="' + (u.startsWith('data:') || u.startsWith('http') ? u : 'data:image/png;base64,' + u) + '" onclick="showModal(this.src)"><br><a href="' + u + '" download>Download</a></div>'
+                '<div class="img-card"><img src="' + u + '" onclick="showModal(this.src)"><a href="' + u + '" download>Save</a></div>'
             ).join('') + '</div>';
-            addToHistory(urls, prompt);
-        } else {
-            throw new Error('No images returned: ' + JSON.stringify(data));
-        }
+            addToHistory(urls, body.prompt);
+        } else throw new Error('No images');
     } catch (e) {
         status.textContent = '❌ ' + e.message;
     } finally {
@@ -452,14 +435,16 @@ onBackendChange();
 const backends = {
     async local(body, headers) {
         const url = headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const samplerMap = { euler_ancestral: 'Euler a', euler: 'Euler', dpmpp_2m: 'DPM++ 2M', dpmpp_sde: 'DPM++ SDE', ddim: 'DDIM', uni_pc: 'UniPC' };
         const payload = {
             prompt: body.prompt,
             negative_prompt: body.negative_prompt,
             width: body.width || 512,
             height: body.height || 768,
-            steps: body.steps || 20,
+            steps: body.steps || 25,
             cfg_scale: body.cfg_scale || 7,
-            sampler_name: body.sampler || 'Euler a',
+            sampler_name: samplerMap[body.sampler] || body.sampler || 'DPM++ 2M',
+            scheduler: body.scheduler || 'karras',
             seed: body.seed || -1,
             batch_size: body.n || 1
         };
@@ -471,6 +456,40 @@ const backends = {
         });
         const data = await res.json();
         return { data: (data.images || []).map(b64 => ({ b64_json: b64 })) };
+    },
+    
+    async comfyui(body, headers) {
+        const url = headers['x-local-url'] || 'http://127.0.0.1:8188';
+        const seed = body.seed > 0 ? body.seed : Math.floor(Math.random() * 999999999);
+        
+        const workflow = {
+            "3": { class_type: "KSampler", inputs: { seed, steps: body.steps || 25, cfg: body.cfg_scale || 7, sampler_name: body.sampler || "dpmpp_2m", scheduler: body.scheduler || "karras", denoise: 1, model: ["4", 0], positive: ["6", 0], negative: ["7", 0], latent_image: ["5", 0] }},
+            "4": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: body.model || "v1-5-pruned-emaonly.safetensors" }},
+            "5": { class_type: "EmptyLatentImage", inputs: { width: body.width || 512, height: body.height || 768, batch_size: body.n || 1 }},
+            "6": { class_type: "CLIPTextEncode", inputs: { text: body.prompt, clip: ["4", 1] }},
+            "7": { class_type: "CLIPTextEncode", inputs: { text: body.negative_prompt || "", clip: ["4", 1] }},
+            "8": { class_type: "VAEDecode", inputs: { samples: ["3", 0], vae: ["4", 2] }},
+            "9": { class_type: "SaveImage", inputs: { filename_prefix: "sdproxy", images: ["8", 0] }}
+        };
+        
+        const queueRes = await fetch(`${url}/prompt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: workflow })
+        });
+        const { prompt_id } = await queueRes.json();
+        if (!prompt_id) throw new Error('Failed to queue');
+        
+        for (let i = 0; i < 120; i++) {
+            await new Promise(r => setTimeout(r, 1000));
+            const histRes = await fetch(`${url}/history/${prompt_id}`);
+            const hist = await histRes.json();
+            if (hist[prompt_id]?.outputs?.["9"]?.images?.length) {
+                const imgs = hist[prompt_id].outputs["9"].images;
+                return { data: imgs.map(img => ({ url: `${url}/view?filename=${img.filename}&subfolder=${img.subfolder || ''}&type=${img.type || 'output'}` })) };
+            }
+        }
+        throw new Error('Timeout');
     },
     
     async pollinations(body) {
@@ -635,7 +654,8 @@ app.post('/v1/chat/completions', async (req, res) => {
 app.get('/v1/models', (req, res) => {
     res.json({
         data: [
-            { id: 'local', name: 'Local A1111/ComfyUI' },
+            { id: 'local', name: 'Local A1111' },
+            { id: 'comfyui', name: 'Local ComfyUI' },
             { id: 'pollinations', name: 'Pollinations (Free)' },
             { id: 'nanogpt', name: 'NanoGPT' },
             { id: 'pixai', name: 'PixAI' }
