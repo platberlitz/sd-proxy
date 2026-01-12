@@ -285,12 +285,10 @@ async function generate() {
         let url = '/v1/images/generations';
         let headers = { 'Content-Type': 'application/json' };
         
-        if (backend === 'custom') {
-            url = $('customUrl').value;
-        }
         if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
         headers['X-Backend'] = backend;
         if (backend === 'local') headers['X-Local-Url'] = $('localUrl').value;
+        if (backend === 'custom') headers['X-Custom-Url'] = $('customUrl').value;
         
         const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
         const data = await res.json();
@@ -542,6 +540,22 @@ const backends = {
             if (task.status === 'failed') throw new Error('Generation failed');
         }
         throw new Error('Timeout');
+    },
+    
+    async custom(body, headers) {
+        const customUrl = headers['x-custom-url'];
+        if (!customUrl) throw new Error('Custom URL required');
+        
+        const apiKey = headers.authorization?.replace('Bearer ', '');
+        const reqHeaders = { 'Content-Type': 'application/json' };
+        if (apiKey) reqHeaders['Authorization'] = `Bearer ${apiKey}`;
+        
+        const res = await fetch(customUrl, {
+            method: 'POST',
+            headers: reqHeaders,
+            body: JSON.stringify(body)
+        });
+        return await res.json();
     }
 };
 
