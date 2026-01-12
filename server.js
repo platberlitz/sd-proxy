@@ -293,7 +293,7 @@ async function generate() {
         const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
         const data = await res.json();
         
-        if (data.error) throw new Error(data.error);
+        if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
         
         if (data.data?.length) {
             const urls = data.data.map(d => d.url || d.b64_json);
@@ -302,6 +302,8 @@ async function generate() {
                 '<div class="img-card"><img src="' + (u.startsWith('data:') || u.startsWith('http') ? u : 'data:image/png;base64,' + u) + '" onclick="showModal(this.src)"><br><a href="' + u + '" download>Download</a></div>'
             ).join('') + '</div>';
             addToHistory(urls, prompt);
+        } else {
+            throw new Error('No images returned: ' + JSON.stringify(data));
         }
     } catch (e) {
         status.textContent = '❌ ' + e.message;
