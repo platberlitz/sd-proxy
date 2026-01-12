@@ -417,20 +417,18 @@ async function refreshModels() {
 
 async function fetchModels() {
     const backend = $('backend').value;
-    let url;
     let headers = { 'Content-Type': 'application/json' };
     const apiKey = $('apiKey').value;
     if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
     
     try {
         if (backend === 'local') {
-            url = $('localUrl').value + '/sdapi/v1/sd-models';
-            const res = await fetch(url);
+            const res = await fetch('/proxy/models?url=' + encodeURIComponent($('localUrl').value + '/sdapi/v1/sd-models'));
             const models = await res.json();
-            $('modelList').innerHTML = models.map(m => '<option value="' + m.title + '">').join('');
+            $('modelList').innerHTML = (models.data || models).map(m => '<option value="' + (m.title || m.id || m) + '">').join('');
         } else if (backend === 'custom') {
-            url = $('customUrl').value.replace(/\\/images\\/generations.*/, '/models').replace(/\\/chat\\/completions.*/, '/models');
-            const res = await fetch(url, { headers });
+            const baseUrl = $('customUrl').value.replace(/\\/images\\/generations.*/, '/models').replace(/\\/chat\\/completions.*/, '/models');
+            const res = await fetch('/proxy/models?url=' + encodeURIComponent(baseUrl) + '&key=' + encodeURIComponent(apiKey));
             const data = await res.json();
             const models = data.data || data.models || data;
             $('modelList').innerHTML = (Array.isArray(models) ? models : []).map(m => '<option value="' + (m.id || m.name || m) + '">').join('');
@@ -598,6 +596,23 @@ app.get('/v1/models', (req, res) => {
             { id: 'pixai', name: 'PixAI' }
         ]
     });
+});
+
+// Proxy for fetching models from external APIs (avoids CORS)
+app.get('/proxy/models', async (req, res) => {
+    const { url, key } = req.query;
+    if (!url) return res.status(400).json({ error: 'url required' });
+    
+    try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (key) headers['Authorization'] = `Bearer ${key}`;
+        
+        const response = await fetch(url, { headers });
+        const data = await response.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 const PORT = process.env.PORT || 3001;
