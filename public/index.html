@@ -1057,6 +1057,20 @@ function prevImage(){if(currentIndex>0){currentIndex--;showModal(allImages[curre
 function nextImage(){if(currentIndex<allImages.length-1){currentIndex++;showModal(allImages[currentIndex]);}}
 function onBackendChange(){
     const b=$('backend').value;
+    
+    // Save current API key before switching
+    if($('apiKey').value && settings.apiKeys) {
+        const prevBackend = Object.keys(settings.apiKeys).find(key => settings.apiKeys[key] === $('apiKey').value);
+        if(prevBackend) settings.apiKeys[prevBackend] = $('apiKey').value;
+    }
+    
+    // Load API key for new backend
+    if(settings.apiKeys && settings.apiKeys[b]) {
+        $('apiKey').value = settings.apiKeys[b];
+    } else {
+        $('apiKey').value = ''; // Clear if no key saved for this backend
+    }
+    
     // Hide API key and model for local backends and pixai (has own model input)
     const noApiKey=['local','comfyui','pollinations'];
     const noModel=['local','comfyui','pixai','pollinations'];
@@ -1184,8 +1198,40 @@ async function fetchBackendModels(){
     }catch(e){setInput('Enter model name');}
 }
 
-function saveSettings(){settings={localUrl:$('localUrl').value,comfyUrl:$('comfyUrl').value,qualityTags:$('qualityTags').value,apiKey:$('apiKey').value,customUrl:$('customUrl').value,backend:$('backend').value};localStorage.setItem('sdproxy_settings',JSON.stringify(settings));}
-function loadSettings(){if(settings.localUrl)$('localUrl').value=settings.localUrl;if(settings.comfyUrl)$('comfyUrl').value=settings.comfyUrl;if(settings.qualityTags)$('qualityTags').value=settings.qualityTags;if(settings.apiKey)$('apiKey').value=settings.apiKey;if(settings.customUrl)$('customUrl').value=settings.customUrl;if(settings.backend){$('backend').value=settings.backend;onBackendChange();}}
+function saveSettings(){
+    // Save per-backend API keys
+    if(!settings.apiKeys) settings.apiKeys = {};
+    const currentBackend = $('backend').value;
+    if($('apiKey').value) settings.apiKeys[currentBackend] = $('apiKey').value;
+    
+    settings={
+        localUrl:$('localUrl').value,
+        comfyUrl:$('comfyUrl').value,
+        qualityTags:$('qualityTags').value,
+        apiKeys:settings.apiKeys,
+        customUrl:$('customUrl').value,
+        backend:$('backend').value
+    };
+    localStorage.setItem('sdproxy_settings',JSON.stringify(settings));
+}
+function loadSettings(){
+    if(settings.localUrl)$('localUrl').value=settings.localUrl;
+    if(settings.comfyUrl)$('comfyUrl').value=settings.comfyUrl;
+    if(settings.qualityTags)$('qualityTags').value=settings.qualityTags;
+    if(settings.customUrl)$('customUrl').value=settings.customUrl;
+    if(settings.backend){
+        $('backend').value=settings.backend;
+        onBackendChange();
+        // Load API key for current backend
+        if(settings.apiKeys && settings.apiKeys[settings.backend]) {
+            $('apiKey').value = settings.apiKeys[settings.backend];
+        }
+    }
+    // Fallback for old single apiKey format
+    if(settings.apiKey && !settings.apiKeys) {
+        $('apiKey').value = settings.apiKey;
+    }
+}
 
 // Wildcard & Matrix
 function expandWildcards(text){return text.replace(/\{([^}]+)\}/g,(m,p)=>{const opts=p.split('|');return opts[Math.floor(Math.random()*opts.length)];});}
