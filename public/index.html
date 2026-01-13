@@ -23,7 +23,7 @@ button:hover{background:#3d6a3d}button:disabled{opacity:0.4}
 .btn-sm{padding:3px 8px;font-size:11px}
 .btn-danger{background:#5a2d2d;border-color:var(--danger);color:var(--danger)}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
-.row-2{grid-template-columns:1fr 1fr}.row-3{grid-template-columns:1fr 1fr 1fr}.row-4{grid-template-columns:repeat(4,1fr)}.row-5{grid-template-columns:repeat(5,1fr)}
+.row-2{grid-template-columns:1fr 1fr}.row-3{grid-template-columns:1fr 1fr 1fr}.row-4{grid-template-columns:repeat(4,1fr)}.row-5{grid-template-columns:repeat(5,1fr)}.row-6{grid-template-columns:repeat(6,1fr)}
 .flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .mt{margin-top:10px}
 .img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
@@ -291,6 +291,9 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div><label><input type="checkbox" id="naiQuality" checked> Quality Tags</label></div>
 </div>
 <div><label><input type="checkbox" id="naiVariety"> Variety+</label></div>
+<div class="mt"><label>Artist/Style Tags <button class="btn-sm" onclick="randomNaiTags()" style="float:right">🎲 Random</button></label>
+<input type="text" id="naiTagSearch" placeholder="Search artists/styles..." oninput="filterNaiTags('naiTagsGrid',this.value)" class="mt">
+<div id="naiTagsGrid" class="flex mt" style="gap:4px;flex-wrap:wrap;max-height:150px;overflow-y:auto"></div></div>
 </div>
 
 <div id="naisteraSettings" style="display:none" class="mt card">
@@ -309,6 +312,9 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <option value="realism">Realism</option>
 </select></div>
 </div>
+<div class="mt"><label>Artist/Style Tags <button class="btn-sm" onclick="randomNaiTags()" style="float:right">🎲 Random</button></label>
+<input type="text" id="naisteraTagSearch" placeholder="Search artists/styles..." oninput="filterNaiTags('naisteraTagsGrid',this.value)" class="mt">
+<div id="naisteraTagsGrid" class="flex mt" style="gap:4px;flex-wrap:wrap;max-height:150px;overflow-y:auto"></div></div>
 </div>
 
 <div id="geminiSettings" style="display:none" class="mt card">
@@ -346,9 +352,23 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 </div>
 
 <div id="commonSettings">
-<div class="row-5">
-<div id="widthSetting"><label>Width</label><input type="number" id="width" value="512" step="64"></div>
-<div id="heightSetting"><label>Height</label><input type="number" id="height" value="768" step="64"></div>
+<div class="row-6">
+<div id="sizeSetting"><label>Size Preset</label><select id="sizePreset" onchange="applySizePreset()">
+<option value="">Custom</option>
+<option value="512,512">512×512 (1:1)</option>
+<option value="512,768" selected>512×768 (2:3)</option>
+<option value="768,512">768×512 (3:2)</option>
+<option value="640,640">640×640 (1:1)</option>
+<option value="768,1024">768×1024 (3:4)</option>
+<option value="1024,768">1024×768 (4:3)</option>
+<option value="832,1216">832×1216 (SDXL 2:3)</option>
+<option value="1216,832">1216×832 (SDXL 3:2)</option>
+<option value="1024,1024">1024×1024 (SDXL 1:1)</option>
+<option value="896,1152">896×1152 (SDXL 7:9)</option>
+<option value="1152,896">1152×896 (SDXL 9:7)</option>
+</select></div>
+<div id="widthSetting"><label>Width</label><input type="number" id="width" value="512" step="64" onchange="$('sizePreset').value=''"></div>
+<div id="heightSetting"><label>Height</label><input type="number" id="height" value="768" step="64" onchange="$('sizePreset').value=''"></div>
 <div id="stepsSetting"><label>Steps</label><input type="number" id="steps" value="25"></div>
 <div id="cfgSetting"><label>CFG</label><input type="number" id="cfg" value="7" step="0.5"></div>
 <div id="seedSetting"><label>Seed</label><input type="number" id="seed" value="-1"></div>
@@ -736,6 +756,23 @@ let settings=JSON.parse(localStorage.getItem('sdproxy_settings')||'{}');
 let currentImage=null,currentIndex=0,allImages=[],brushSize=30,inpaintImg=null,maskCanvas=null,maskCtx=null,drawing=false;
 let img2imgData=null,outpaintData=null,upscaleData=null,controlnetData=null,controlnetProcessed=null;
 let refImages=[];
+
+function applySizePreset(){const v=$('sizePreset').value;if(v){const[w,h]=v.split(',');$('width').value=w;$('height').value=h;}}
+
+// NAI artist and style tags (spaces not underscores per NAI docs)
+const NAI_ARTISTS=['wlop','ilya kuvshinov','artgerm','greg rutkowski','sakimichan','krenz cushart','ruan jia','makoto shinkai','range murata','yoshitaka amano','akihiko yoshida','yoji shinkawa','tetsuya nomura','shigenori soejima','sui ishida','takeshi obata','hirohiko araki','eiichiro oda','akira toriyama','kentaro miura','junji ito','alphonse mucha','james jean','loish','guweiz','nixeu','redjuice','huke','fuzichoco','lack','ciloranko','ask (askzy)','mika pikazo','necomi','anmi','ke-ta','kantoku','tony taka','nardack','mocha (cotton)','torino aqua','ogipote','rurudo','yoneyama mai','tiv','saitom','refeia','momoko (momopoco)','asanagi','raita','oyari ashito','carnelian','dmyo','nishieda','shirow masamune','loundraw','pomodorosa','bae.c','cutesexyrobutts','dishwasher1910','ningen mame','novelance','goto-p','wenjun lin','dao trong le','shal.e','tsubasa tsubasa','misoni comi','banishment','personalami','rossdraws','zeronis'];
+const NAI_STYLES=['traditional media','watercolor (medium)','oil painting (medium)','ink (medium)','colored pencil (medium)','pastel (medium)','acrylic paint (medium)','graphite (medium)','marker (medium)','anime screencap','pixel art','3d','sketch','lineart','no lineart','painterly','anime coloring','flat color','colorful','monochrome','greyscale','muted color','pale color','pastel colors','high contrast','sepia','limited palette','spot color','abstract','art nouveau','impressionism','ukiyo-e','realistic','retro artstyle','game cg','official art','oekaki','vector trace','backlighting','bloom','bokeh','chromatic aberration','depth of field','lens flare','motion blur','soft focus','halftone','dithering','year 2024','year 2020','year 2015','year 2010'];
+
+function initNaiTags(){
+const grids=['naiTagsGrid','naisteraTagsGrid'];
+grids.forEach(gridId=>{const g=$(gridId);if(!g)return;renderNaiTags(gridId,'');});}
+function renderNaiTags(gridId,filter){const g=$(gridId);if(!g)return;g.innerHTML='';const f=filter.toLowerCase();
+const all=[...NAI_ARTISTS.map(t=>({t,type:'artist'})),...NAI_STYLES.map(t=>({t,type:'style'}))];
+all.filter(x=>!f||x.t.toLowerCase().includes(f)).slice(0,50).forEach(({t,type})=>{
+const btn=document.createElement('button');btn.className='btn-sm';btn.textContent=t;btn.title=type;btn.onclick=()=>addTagToPrompt(t);g.appendChild(btn);});}
+function filterNaiTags(gridId,val){renderNaiTags(gridId,val);}
+function addTagToPrompt(tag){const p=$('prompt');const v=p.value.trim();p.value=v+(v&&!v.endsWith(',')&&!v.endsWith(', ')?', ':v?' ':'')+tag+', ';p.focus();}
+function randomNaiTags(){const artists=[...NAI_ARTISTS].sort(()=>Math.random()-0.5).slice(0,2);const styles=[...NAI_STYLES].sort(()=>Math.random()-0.5).slice(0,2);[...artists,...styles].forEach(t=>addTagToPrompt(t));}
 
 // Extended Danbooru tags
 const TAGS=['1girl','1boy','solo','long_hair','short_hair','blonde_hair','brown_hair','black_hair','white_hair','red_hair','blue_hair','pink_hair','purple_hair','green_hair','multicolored_hair','blue_eyes','red_eyes','green_eyes','brown_eyes','yellow_eyes','purple_eyes','heterochromia','smile','open_mouth','closed_eyes','looking_at_viewer','looking_away','from_behind','from_side','standing','sitting','lying','walking','running','jumping','kneeling','outdoors','indoors','sky','cloud','sun','moon','night','day','sunset','sunrise','rain','snow','wind','water','fire','lightning','forest','mountain','beach','ocean','city','street','room','bedroom','bathroom','kitchen','school','classroom','office','castle','ruins','fantasy','sci-fi','cyberpunk','steampunk','medieval','modern','futuristic','simple_background','white_background','black_background','gradient_background','detailed_background','blurry_background','full_body','upper_body','portrait','cowboy_shot','close-up','wide_shot','dutch_angle','from_above','from_below','pov','dress','shirt','skirt','pants','shorts','jacket','coat','sweater','hoodie','uniform','school_uniform','maid','armor','bikini','swimsuit','underwear','nude','weapon','sword','gun','magic','wings','tail','horns','ears','animal_ears','cat_ears','dog_ears','fox_ears','rabbit_ears','halo','crown','hat','glasses','mask','jewelry','necklace','earrings','bracelet','ring','flower','ribbon','bow','lace','frills','high_heels','boots','barefoot','thighhighs','stockings','pantyhose','gloves','cape','scarf'];
@@ -1219,6 +1256,6 @@ $('pixaiUpscale').onchange=updatePixaiCost;
 $('batch').onchange=function(){if($('backend').value==='pixai')updatePixaiCost();};
 
 // Init
-loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();loadPixaiCredits();updatePixaiCost();
+loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();loadPixaiCredits();updatePixaiCost();initNaiTags();
 </script>
 </body></html>
