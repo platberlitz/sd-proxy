@@ -108,6 +108,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <button class="tab" onclick="showTab('outpaint')">Outpaint</button>
 <button class="tab" onclick="showTab('upscale')">Upscale</button>
 <button class="tab" onclick="showTab('controlnet')">ControlNet</button>
+<button class="tab" onclick="showTab('loras')">LoRAs</button>
 <button class="tab" onclick="showTab('tools')">Tools</button>
 <button class="tab" onclick="showTab('models')">Models</button>
 </div>
@@ -552,6 +553,18 @@ Drop image<input type="file" id="controlnetFile" accept="image/*" style="display
 </div>
 
 <!-- Tools Tab -->
+<!-- LoRA Browser Tab -->
+<div id="tab-loras" class="tab-content">
+<div class="card">
+<h3>🎨 LoRA Browser (A1111)</h3>
+<div class="flex">
+<input id="loraSearch" placeholder="Search LoRAs..." oninput="filterLoras()" style="flex:1">
+<button onclick="refreshLoras()" class="btn-sm">Refresh</button>
+</div>
+</div>
+<div id="loraBrowser" class="lora-browser"></div>
+</div>
+
 <div id="tab-tools" class="tab-content">
 <div class="card">
 <h3>🔧 Tools</h3>
@@ -590,10 +603,16 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <button onclick="generateXYZ()" class="btn-primary mt">Generate X/Y/Z Plot</button>
 </div>
 <div>
-<label>Batch from File</label>
-<textarea id="batchPrompts" rows="5" placeholder="One prompt per line"></textarea>
-<button onclick="generateBatch()" class="btn-primary mt">Generate All</button>
+<label>Prompt Interpolation</label>
+<textarea id="interpPromptA" rows="2" placeholder="Prompt A"></textarea>
+<textarea id="interpPromptB" rows="2" placeholder="Prompt B" class="mt"></textarea>
+<div class="flex mt"><label style="margin:0">Steps:</label><input type="number" id="interpSteps" value="5" min="2" max="10" style="width:60px"><button onclick="generateInterpolation()" class="btn-primary">Interpolate</button></div>
 </div>
+</div>
+<div class="mt">
+<label>Batch from File</label>
+<textarea id="batchPrompts" rows="3" placeholder="One prompt per line"></textarea>
+<button onclick="generateBatch()" class="btn-primary mt">Generate All</button>
 </div>
 </div>
 <div id="toolsResult" class="img-grid"></div>
@@ -1167,6 +1186,20 @@ async function generateBatch(){
     $('status').textContent='✅ Done';}catch(e){$('status').textContent='❌ '+e.message;}
 }
 
+// Prompt Interpolation
+async function generateInterpolation(){
+const pA=$('interpPromptA').value,pB=$('interpPromptB').value,steps=+$('interpSteps').value;
+if(!pA||!pB)return alert('Enter both prompts');
+const tagsA=pA.split(',').map(t=>t.trim()),tagsB=pB.split(',').map(t=>t.trim());
+const results=[];$('status').textContent='Interpolating...';
+for(let i=0;i<steps;i++){
+const ratio=i/(steps-1);const prompt=tagsA.map((t,j)=>{const tB=tagsB[j]||t;return t===tB?t:`(${t}:${(1-ratio).toFixed(2)}), (${tB}:${ratio.toFixed(2)})`;}).join(', ');
+$('status').textContent=`Generating ${i+1}/${steps}...`;
+const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify({prompt,negative_prompt:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,n:1})});
+const data=await res.json();if(data.data?.[0])results.push(data.data[0].url||'data:image/png;base64,'+data.data[0].b64_json);}
+allImages=results;$('toolsResult').innerHTML=results.map(u=>`<div class="img-card"><img src="${u}" onclick="showModal('${u}')"></div>`).join('');
+$('status').textContent='✅ Done';}
+
 async function enhancePrompt(){
     const prompt=$('prompt').value;if(!prompt)return;$('status').textContent='✨ Enhancing...';
     try{const res=await fetch('/api/enhance-prompt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,style:$('style').value})});
@@ -1264,12 +1297,17 @@ async function deleteTemplate(id){await fetch('/api/templates/'+id,{method:'DELE
 function showTemplates(){$('templatesModal').classList.add('show');$('templatesModalList').innerHTML=$('templateList').innerHTML;}
 
 // Models
+let allLoras=[];
 async function refreshA1111Models(){try{const res=await fetch('/api/a1111/models',{headers:getHeaders()});const d=await res.json();
 $('currentModel').innerHTML=d.models.map(m=>`<option value="${m.title}">${m.model_name}</option>`).join('');
 $('currentVae').innerHTML='<option value="Automatic">Automatic</option>'+d.vaes.map(v=>`<option value="${v.model_name}">${v.model_name}</option>`).join('');
-$('loraBrowser').innerHTML=d.loras.map(l=>`<div class="lora-card" onclick="insertLora('${l.name}')"><strong>${l.name}</strong></div>`).join('');}catch(e){alert('Error: '+e.message);}}
+allLoras=d.loras||[];renderLoras();}catch(e){alert('Error: '+e.message);}}
+function renderLoras(){const search=($('loraSearch')?.value||'').toLowerCase();
+$('loraBrowser').innerHTML=allLoras.filter(l=>!search||l.name.toLowerCase().includes(search)).map(l=>`<div class="lora-card" onclick="insertLora('${l.name}')" title="Click to add"><strong>${l.name}</strong></div>`).join('')||'<p style="color:var(--muted)">No LoRAs found. Click Refresh to load from A1111.</p>';}
+function filterLoras(){renderLoras();}
+async function refreshLoras(){await refreshA1111Models();}
 async function switchModel(){try{await fetch('/api/a1111/model',{method:'POST',headers:getHeaders(),body:JSON.stringify({model:$('currentModel').value,vae:$('currentVae').value})});$('status').textContent='✅ Model switched';}catch(e){$('status').textContent='❌ '+e.message;}}
-function insertLora(name){$('prompt').value+=` <lora:${name}:0.7>`;updatePromptTags();}
+function insertLora(name){$('prompt').value+=` <lora:${name}:0.7>`;updatePromptTags();$('status').textContent=`Added LoRA: ${name}`;}
 async function downloadCivitai(){const url=$('civitaiUrl').value;if(!url)return;$('downloadProgress').textContent='Starting...';
 try{const match=url.match(/models\/(\d+)/);if(!match)throw new Error('Invalid URL');
 const infoRes=await fetch(`https://civitai.com/api/v1/models/${match[1]}`);const info=await infoRes.json();const version=info.modelVersions[0];const file=version.files[0];
