@@ -344,13 +344,26 @@ const backends = {
         const opts = body.gemini || {};
         const model = opts.model || 'gemini-2.5-flash-image';
         
+        // Build parts array with reference images and prompt
+        const parts = [];
+        if (body.reference_images?.length) {
+            log(sessionId, `Adding ${body.reference_images.length} reference images`);
+            for (const img of body.reference_images) {
+                const match = img.match(/^data:([^;]+);base64,(.+)$/);
+                if (match) {
+                    parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+                }
+            }
+        }
+        parts.push({ text: body.prompt });
+        
         log(sessionId, `Gemini request: model=${model}, prompt=${(body.prompt || '').substring(0, 50)}...`);
         
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: body.prompt }] }],
+                contents: [{ role: 'user', parts }],
                 generationConfig: {
                     responseModalities: ['TEXT', 'IMAGE'],
                     ...(opts.aspect_ratio && { aspectRatio: opts.aspect_ratio })
