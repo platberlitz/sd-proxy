@@ -128,6 +128,12 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div id="comfyuiSettings" style="display:none" class="mt card">
 <h3>ComfyUI Workflow</h3>
 <p style="color:var(--muted);font-size:11px;margin-bottom:8px">Export workflow from ComfyUI: Settings → Enable Dev Mode → Save (API Format). Use placeholders: %prompt%, %negative%, %seed%, %width%, %height%, %steps%, %cfg%</p>
+<div class="flex mb">
+<select id="comfyWorkflowSelect" onchange="loadComfyWorkflow()" style="flex:1"><option value="">-- Saved Workflows --</option></select>
+<input id="comfyWorkflowName" placeholder="Workflow name" style="width:120px">
+<button class="btn-sm" onclick="saveComfyWorkflow()">Save</button>
+<button class="btn-sm btn-danger" onclick="deleteComfyWorkflow()">Del</button>
+</div>
 <textarea id="comfyWorkflow" rows="6" placeholder='Paste workflow JSON here...'></textarea>
 </div>
 <div id="pixaiSettings" style="display:none" class="mt card">
@@ -430,6 +436,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <button onclick="interruptGen()" id="interruptBtn" style="display:none" class="btn-danger">⏹ Stop</button>
 <button onclick="addToQueue()">+ Queue</button>
 <button onclick="generateMatrix()">Matrix</button>
+<button onclick="showABTest()">A/B Test</button>
 <button onclick="savePreset()">💾 Preset</button>
 <button onclick="randomSeed()">🎲</button>
 </div>
@@ -765,6 +772,19 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <div id="templatesModalList" class="mt"></div>
 </div>
 </div>
+
+<!-- A/B Test Modal -->
+<div class="modal" id="abModal" onclick="if(event.target===this)this.classList.remove('show')">
+<div class="card" style="max-width:800px;max-height:90vh;overflow-y:auto">
+<h3>A/B Comparison Test</h3>
+<div class="row-2 mt">
+<div><label>Prompt A</label><textarea id="abPromptA" rows="3"></textarea></div>
+<div><label>Prompt B</label><textarea id="abPromptB" rows="3"></textarea></div>
+</div>
+<div class="flex mt"><button onclick="runABTest()" class="btn-primary">Generate Both</button><button onclick="$('abModal').classList.remove('show')">Cancel</button></div>
+<div id="abResults" class="row-2 mt"></div>
+</div>
+</div>
 </div>
 
 <script>
@@ -866,6 +886,25 @@ function onBackendChange(){
 }
 function randomSeed(){$('seed').value=Math.floor(Math.random()*2147483647);}
 function toggleTheme(){document.body.classList.toggle('light-theme');const isLight=document.body.classList.contains('light-theme');localStorage.setItem('sdproxy_theme',isLight?'light':'dark');document.querySelector('.theme-toggle').textContent=isLight?'☀️':'🌙';}
+
+// A/B Testing
+function showABTest(){$('abPromptA').value=$('prompt').value;$('abPromptB').value=$('prompt').value;$('abResults').innerHTML='';$('abModal').classList.add('show');}
+async function runABTest(){
+const base={negative_prompt:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,seed:+$('seed').value,n:1};
+$('abResults').innerHTML='<p>Generating A...</p><p></p>';
+const resA=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify({...base,prompt:$('abPromptA').value})});
+const dataA=await resA.json();const urlA=dataA.data?.[0]?.url||'data:image/png;base64,'+dataA.data?.[0]?.b64_json;
+$('abResults').innerHTML=`<div><h4>A</h4><img src="${urlA}" style="max-width:100%"></div><p>Generating B...</p>`;
+const resB=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify({...base,prompt:$('abPromptB').value})});
+const dataB=await resB.json();const urlB=dataB.data?.[0]?.url||'data:image/png;base64,'+dataB.data?.[0]?.b64_json;
+$('abResults').innerHTML=`<div><h4>A</h4><img src="${urlA}" style="max-width:100%;cursor:pointer" onclick="showModal('${urlA}')"></div><div><h4>B</h4><img src="${urlB}" style="max-width:100%;cursor:pointer" onclick="showModal('${urlB}')"></div>`;}
+
+// ComfyUI Workflow Library
+let comfyWorkflows=JSON.parse(localStorage.getItem('sdproxy_comfy_workflows')||'[]');
+function renderComfyWorkflows(){$('comfyWorkflowSelect').innerHTML='<option value="">-- Saved Workflows --</option>'+comfyWorkflows.map((w,i)=>`<option value="${i}">${w.name}</option>`).join('');}
+function loadComfyWorkflow(){const i=$('comfyWorkflowSelect').value;if(i!=='')$('comfyWorkflow').value=comfyWorkflows[i].workflow;}
+function saveComfyWorkflow(){const name=$('comfyWorkflowName').value||'Workflow '+(comfyWorkflows.length+1);const workflow=$('comfyWorkflow').value;if(!workflow)return;comfyWorkflows.push({name,workflow});localStorage.setItem('sdproxy_comfy_workflows',JSON.stringify(comfyWorkflows));renderComfyWorkflows();$('comfyWorkflowName').value='';}
+function deleteComfyWorkflow(){const i=$('comfyWorkflowSelect').value;if(i==='')return;comfyWorkflows.splice(i,1);localStorage.setItem('sdproxy_comfy_workflows',JSON.stringify(comfyWorkflows));renderComfyWorkflows();$('comfyWorkflow').value='';}
 
 async function fetchBackendModels(){
     const backend=$('backend').value;
@@ -1310,6 +1349,6 @@ $('batch').onchange=function(){if($('backend').value==='pixai')updatePixaiCost()
 
 // Init
 if(localStorage.getItem('sdproxy_theme')==='light'){document.body.classList.add('light-theme');document.querySelector('.theme-toggle').textContent='☀️';}
-loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();loadPixaiCredits();updatePixaiCost();initNaiTags();
+loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();loadPixaiCredits();updatePixaiCost();initNaiTags();renderComfyWorkflows();
 </script>
 </body></html>
