@@ -1439,7 +1439,7 @@ async function generateLLMPrompt(){
     const endpoint=baseUrl+'/chat/completions';
     if(!baseUrl)return alert('Invalid endpoint');
     
-    const sysPrompt=style==='tags'?'You are an expert at creating Danbooru-style image generation prompts. Convert user requests into comma-separated tags. Include character details, pose, expression, clothing, setting, lighting, and quality tags. Output ONLY the tags, no explanation.':'You are an expert at creating natural language image generation prompts. Convert user requests into detailed descriptive paragraphs suitable for photorealistic image generation. Include subject, setting, lighting, mood, camera angle. Output ONLY the description, no explanation.';
+    const sysPrompt=style==='tags'?'You are an expert at creating Danbooru-style image generation prompts. Convert user requests into comma-separated tags. Include character details, pose, expression, clothing, setting, lighting, and quality tags. KEEP UNDER 250 CHARACTERS. Output ONLY the tags, no explanation.':'You are an expert at creating natural language image generation prompts. Convert user requests into detailed descriptive paragraphs suitable for photorealistic image generation. Include subject, setting, lighting, mood, camera angle. KEEP UNDER 250 CHARACTERS. Output ONLY the description, no explanation.';
     
     $('llmOutput').value='Generating...';
     try{
@@ -1447,7 +1447,17 @@ async function generateLLMPrompt(){
         const data=await res.json();
         if(data.error)throw new Error(data.error.message||JSON.stringify(data.error));
         const output=data.choices?.[0]?.message?.content||'';
-        $('llmOutput').value=output.trim();
+        let cleaned = output.trim();
+        
+        // Enforce character limit
+        if (cleaned.length > 250) {
+            cleaned = cleaned.substring(0, 250).trim();
+            // Try to end at a word boundary
+            const lastSpace = cleaned.lastIndexOf(' ');
+            if (lastSpace > 200) cleaned = cleaned.substring(0, lastSpace);
+        }
+        
+        $('llmOutput').value=cleaned;
     }catch(e){$('llmOutput').value='Error: '+e.message;}
 }
 
