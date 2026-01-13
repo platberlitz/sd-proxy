@@ -1396,8 +1396,9 @@ function onLLMProviderChange(){const p=$('llmProvider').value;$('llmCustomUrl').
 async function fetchLLMModels(){
     const provider=$('llmProvider').value;
     const apiKey=$('llmApiKey').value;
-    const customUrl=$('llmCustomEndpoint').value;
-    const baseUrl=provider==='custom'?customUrl.replace(/\/chat\/completions$/,'').replace(/\/v1$/,''):LLM_ENDPOINTS[provider];
+    let customUrl=$('llmCustomEndpoint').value.replace(/\/+$/,'');
+    if(customUrl.endsWith('/chat/completions'))customUrl=customUrl.replace(/\/chat\/completions$/,'');
+    const baseUrl=provider==='custom'?customUrl:LLM_ENDPOINTS[provider];
     if(!apiKey){$('llmModel').innerHTML='<option value="">Enter API key first</option>';return;}
     if(provider==='custom'&&!customUrl){$('llmModel').innerHTML='<option value="">Enter endpoint URL</option>';return;}
     $('llmModel').innerHTML='<option value="">Loading...</option>';
@@ -1422,8 +1423,13 @@ async function generateLLMPrompt(){
     const apiKey=$('llmApiKey').value;if(!apiKey)return alert('Enter API key');
     const model=$('llmModelManual').value||$('llmModel').value||'gpt-4o-mini';
     const style=$('llmPromptStyle').value;
-    const customUrl=$('llmCustomEndpoint').value;
-    const baseUrl=provider==='custom'?customUrl.replace(/\/chat\/completions$/,'').replace(/\/v1$/,''):LLM_ENDPOINTS[provider];
+    let customUrl=$('llmCustomEndpoint').value.replace(/\/+$/,'');
+    // Ensure URL ends with /v1 for custom endpoints
+    let baseUrl;
+    if(provider==='custom'){
+        if(customUrl.endsWith('/chat/completions'))customUrl=customUrl.replace(/\/chat\/completions$/,'');
+        baseUrl=customUrl;
+    }else{baseUrl=LLM_ENDPOINTS[provider];}
     const endpoint=baseUrl+'/chat/completions';
     if(!baseUrl)return alert('Invalid endpoint');
     
