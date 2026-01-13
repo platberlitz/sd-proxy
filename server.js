@@ -330,14 +330,24 @@ const backends = {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         const reqHeaders = { 'Content-Type': 'application/json' };
         if (apiKey) reqHeaders['Authorization'] = `Bearer ${apiKey}`;
-        const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify({ model: body.model || 'gpt-4o', messages: [{ role: 'user', content: body.prompt }] }) });
+        
+        // Build message content with reference images
+        const content = [];
+        if (body.reference_images?.length) {
+            for (const img of body.reference_images) {
+                content.push({ type: 'image_url', image_url: { url: img } });
+            }
+        }
+        content.push({ type: 'text', text: body.prompt });
+        
+        const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify({ model: body.model || 'gpt-4o', messages: [{ role: 'user', content }] }) });
         const data = await res.json();
         const msg = data.choices?.[0]?.message || {};
         if (msg.images?.length) return { data: msg.images.map(img => ({ url: img.image_url?.url || img.url })) };
-        const content = msg.content || '';
-        const urls = content.match(/https?:\/\/[^\s\)]+\.(png|jpg|jpeg|webp|gif)/gi) || [];
+        const msgContent = msg.content || '';
+        const urls = msgContent.match(/https?:\/\/[^\s\)]+\.(png|jpg|jpeg|webp|gif)/gi) || [];
         if (urls.length) return { data: urls.map(url => ({ url })) };
-        throw new Error(content || JSON.stringify(data));
+        throw new Error(msgContent || JSON.stringify(data));
     }
 };
 
