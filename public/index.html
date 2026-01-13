@@ -339,6 +339,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <label>Prompt <span class="flex" style="float:right;gap:4px">
 <button class="btn-sm" onclick="enhancePrompt()">✨ Enhance</button>
 <button class="btn-sm" onclick="showTemplates()">📝 Templates</button>
+<button class="btn-sm" onclick="showPromptHistory()">📜 History</button>
 <button class="btn-sm" onclick="showWildcardHelp()">? Help</button>
 </span></label>
 <div style="position:relative">
@@ -348,7 +349,14 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div id="promptTags" class="mt"></div>
 
 <div id="negativeSetting">
-<label>Negative Prompt</label>
+<label>Negative Prompt <span style="float:right"><select id="negativePreset" onchange="applyNegativePreset()" style="width:auto;padding:2px 4px;font-size:10px">
+<option value="">Presets...</option>
+<option value="quality">Quality Issues</option>
+<option value="anatomy">Anatomy Issues</option>
+<option value="style">Style Issues</option>
+<option value="artifacts">Artifacts</option>
+<option value="nsfw">NSFW Filter</option>
+</select></span></label>
 <textarea id="negative" rows="2">lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, blurry, deformed, ugly, duplicate, morbid, mutilated, mutation, disfigured, malformed limbs, extra limbs, fused fingers, too many fingers, long neck</textarea>
 </div>
 
@@ -372,7 +380,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div id="heightSetting"><label>Height</label><input type="number" id="height" value="768" step="64" onchange="$('sizePreset').value=''"></div>
 <div id="stepsSetting"><label>Steps</label><input type="number" id="steps" value="25"></div>
 <div id="cfgSetting"><label>CFG</label><input type="number" id="cfg" value="7" step="0.5"></div>
-<div id="seedSetting"><label>Seed</label><input type="number" id="seed" value="-1"></div>
+<div id="seedSetting"><label>Seed <button class="btn-sm" onclick="incrementSeed()" title="Increment seed">+1</button></label><input type="number" id="seed" value="-1"></div>
 </div>
 
 <div class="row-4" id="samplerRow">
@@ -426,6 +434,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <button onclick="randomSeed()">🎲</button>
 </div>
 <div id="status"></div>
+<div id="genTimer" style="font-size:11px;color:var(--muted)"></div>
 </div>
 <div id="result" class="img-grid"></div>
 </div>
@@ -650,6 +659,7 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <div class="card"><div class="flex">
 <h3 style="flex:1">⭐ Favorites Gallery</h3>
 <button onclick="loadFavorites()" class="btn-sm">Refresh</button>
+<button onclick="downloadAllFavorites()" class="btn-sm">📥 Download All</button>
 </div></div>
 <div id="galleryGrid" class="gallery"></div>
 </div>
@@ -722,6 +732,10 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <h3 class="mt">Export/Import</h3>
 <div class="flex"><button onclick="exportData()">Export All</button><button onclick="$('importFile').click()">Import</button></div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+
+<h3 class="mt">Batch Prompts</h3>
+<div class="flex"><button onclick="$('batchPromptsFile').click()">📄 Import Prompts (.txt)</button><span id="batchPromptsStatus" style="color:var(--muted);font-size:11px"></span></div>
+<input type="file" id="batchPromptsFile" accept=".txt" style="display:none" onchange="importBatchPrompts(this)">
 </div>
 </div>
 
@@ -776,6 +790,24 @@ const btn=document.createElement('button');btn.className='btn-sm';btn.textConten
 function filterNaiTags(gridId,val){renderNaiTags(gridId,val);}
 function addTagToPrompt(tag){const p=$('prompt');const v=p.value.trim();p.value=v+(v&&!v.endsWith(',')&&!v.endsWith(', ')?', ':v?' ':'')+tag+', ';p.focus();}
 function randomNaiTags(){const artists=[...NAI_ARTISTS].sort(()=>Math.random()-0.5).slice(0,2);const styles=[...NAI_STYLES].sort(()=>Math.random()-0.5).slice(0,2);[...artists,...styles].forEach(t=>addTagToPrompt(t));}
+
+// Prompt history
+let promptHistory=JSON.parse(localStorage.getItem('sdproxy_prompt_history')||'[]');
+function savePromptToHistory(p){if(!p||promptHistory[0]===p)return;promptHistory.unshift(p);promptHistory=promptHistory.slice(0,50);localStorage.setItem('sdproxy_prompt_history',JSON.stringify(promptHistory));}
+function showPromptHistory(){const h=promptHistory.slice(0,20).map((p,i)=>`<div style="padding:6px;border-bottom:1px solid var(--border);cursor:pointer" onclick="$('prompt').value=promptHistory[${i}];this.parentElement.parentElement.classList.remove('show')">${p.slice(0,100)}${p.length>100?'...':''}</div>`).join('');
+const m=document.createElement('div');m.className='modal show';m.innerHTML=`<div class="card" style="max-width:600px;max-height:80vh;overflow-y:auto"><h3>Prompt History</h3><div class="mt">${h||'No history yet'}</div><button class="mt" onclick="this.parentElement.parentElement.remove()">Close</button></div>`;m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
+
+// Negative presets
+const NEG_PRESETS={quality:'lowres, worst quality, low quality, jpeg artifacts, blurry, noisy',anatomy:'bad anatomy, bad hands, missing fingers, extra digit, fewer digits, extra limbs, malformed limbs, fused fingers, too many fingers, long neck, bad proportions',style:'text, signature, watermark, username, artist name, logo, copyright',artifacts:'compression artifacts, chromatic aberration, scan artifacts, screentone, halftone',nsfw:'nsfw, nude, naked, explicit, suggestive, lewd'};
+function applyNegativePreset(){const v=$('negativePreset').value;if(v&&NEG_PRESETS[v]){const n=$('negative');n.value=n.value.trim();if(n.value&&!n.value.endsWith(','))n.value+=', ';n.value+=NEG_PRESETS[v];}$('negativePreset').value='';}
+
+// Seed increment
+function incrementSeed(){const s=$('seed');const v=parseInt(s.value);if(v>0)s.value=v+1;else s.value=Math.floor(Math.random()*2147483647);}
+
+// Generation timer
+let genStartTime=null,genTimerInterval=null;
+function startGenTimer(){genStartTime=Date.now();$('genTimer').textContent='⏱ 0.0s';genTimerInterval=setInterval(()=>{$('genTimer').textContent='⏱ '+((Date.now()-genStartTime)/1000).toFixed(1)+'s';},100);}
+function stopGenTimer(){if(genTimerInterval){clearInterval(genTimerInterval);genTimerInterval=null;}if(genStartTime)$('genTimer').textContent='⏱ '+((Date.now()-genStartTime)/1000).toFixed(1)+'s (done)';}
 
 // Extended Danbooru tags
 const TAGS=['1girl','1boy','solo','long_hair','short_hair','blonde_hair','brown_hair','black_hair','white_hair','red_hair','blue_hair','pink_hair','purple_hair','green_hair','multicolored_hair','blue_eyes','red_eyes','green_eyes','brown_eyes','yellow_eyes','purple_eyes','heterochromia','smile','open_mouth','closed_eyes','looking_at_viewer','looking_away','from_behind','from_side','standing','sitting','lying','walking','running','jumping','kneeling','outdoors','indoors','sky','cloud','sun','moon','night','day','sunset','sunrise','rain','snow','wind','water','fire','lightning','forest','mountain','beach','ocean','city','street','room','bedroom','bathroom','kitchen','school','classroom','office','castle','ruins','fantasy','sci-fi','cyberpunk','steampunk','medieval','modern','futuristic','simple_background','white_background','black_background','gradient_background','detailed_background','blurry_background','full_body','upper_body','portrait','cowboy_shot','close-up','wide_shot','dutch_angle','from_above','from_below','pov','dress','shirt','skirt','pants','shorts','jacket','coat','sweater','hoodie','uniform','school_uniform','maid','armor','bikini','swimsuit','underwear','nude','weapon','sword','gun','magic','wings','tail','horns','ears','animal_ears','cat_ears','dog_ears','fox_ears','rabbit_ears','halo','crown','hat','glasses','mask','jewelry','necklace','earrings','bracelet','ring','flower','ribbon','bow','lace','frills','high_heels','boots','barefoot','thighhighs','stockings','pantyhose','gloves','cape','scarf'];
@@ -917,6 +949,7 @@ function getHeaders(){const h={'Content-Type':'application/json','X-Backend':$('
 
 async function generate(){
     const btn=$('genBtn');btn.disabled=true;$('interruptBtn').style.display='inline';$('status').textContent='⏳ Generating...';
+    startGenTimer();savePromptToHistory($('prompt').value);
     try{
         const style=$('style').value;
         const extra=$('extraInstructions').value;
@@ -957,7 +990,7 @@ async function generate(){
                 <div class="actions"><button onclick="showModal('${u}')">View</button><button onclick="sendToImg2ImgUrl('${u}')">i2i</button><button onclick="addFavorite('${u}')">⭐</button></div></div>`).join('');
         }
     }catch(e){$('status').textContent='❌ '+e.message;}
-    btn.disabled=false;$('interruptBtn').style.display='none';
+    btn.disabled=false;$('interruptBtn').style.display='none';stopGenTimer();
 }
 
 async function interruptGen(){await fetch('/api/interrupt',{method:'POST',headers:getHeaders()});$('status').textContent='⏹ Interrupted';}
@@ -1160,7 +1193,7 @@ async function processQueue(){$('status').textContent='⏳ Processing...';const 
 // History
 let currentFolder=null;
 async function loadHistory(){const search=$('historySearch')?.value||'';const res=await fetch(`/api/history?search=${encodeURIComponent(search)}&folder=${currentFolder||''}`);const data=await res.json();
-$('historyGrid').innerHTML=data.items.map(h=>{const url=h.images[0]?.url||'data:image/png;base64,'+h.images[0]?.b64_json;return`<div class="history-item" onclick="showModal('${url}','${(h.prompt||'').slice(0,100).replace(/'/g,"\\'")}')"><img src="${url}"></div>`;}).join('')||'<p style="color:var(--muted)">No history</p>';}
+$('historyGrid').innerHTML=data.items.map(h=>{const url=h.images[0]?.url||'data:image/png;base64,'+h.images[0]?.b64_json;const p=(h.prompt||'').replace(/'/g,"\\'");return`<div class="history-item" onclick="showModal('${url}','${p.slice(0,100)}')" title="${p.slice(0,200)}"><img src="${url}"><button class="btn-sm" style="position:absolute;bottom:2px;right:2px;padding:1px 4px" onclick="event.stopPropagation();navigator.clipboard.writeText('${p}');this.textContent='✓';setTimeout(()=>this.textContent='📋',500)" title="Copy prompt">📋</button></div>`;}).join('')||'<p style="color:var(--muted)">No history</p>';}
 async function clearHistory(){if(confirm('Clear all?')){await fetch('/api/history',{method:'DELETE'});loadHistory();}}
 function filterFolder(f){currentFolder=f;document.querySelectorAll('.folder-item').forEach(el=>el.classList.remove('active'));event.target.classList.add('active');loadHistory();}
 async function createFolder(){const name=prompt('Folder name:');if(name){await fetch('/api/folders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});loadFolders();}}
@@ -1172,6 +1205,7 @@ $('galleryGrid').innerHTML=f.map(x=>`<div class="img-card"><img src="${x.url}" o
 async function addFavorite(url){await fetch('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});loadFavorites();}
 async function removeFavorite(id){await fetch('/api/favorites/'+id,{method:'DELETE'});loadFavorites();}
 function toggleFavorite(){if(currentImage)addFavorite(currentImage);}
+async function downloadAllFavorites(){if(!allImages.length)return alert('No favorites');for(let i=0;i<allImages.length;i++){const a=document.createElement('a');a.href=allImages[i];a.download=`favorite-${i+1}.png`;a.click();await new Promise(r=>setTimeout(r,200));}}
 
 // Presets
 async function loadPresets(){const res=await fetch('/api/presets');const p=await res.json();
@@ -1232,6 +1266,11 @@ if(d.favorites)localStorage.setItem('sdproxy_favorites',JSON.stringify(d.favorit
 if(d.folders)localStorage.setItem('sdproxy_folders',JSON.stringify(d.folders));
 if(d.costs)localStorage.setItem('sdproxy_costs',JSON.stringify(d.costs));
 alert('Imported');location.reload();}catch{alert('Invalid file');}};r.readAsText(f);}
+
+function importBatchPrompts(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
+lines.forEach(p=>addToQueueWithPrompt(p));$('batchPromptsStatus').textContent=`Added ${lines.length} prompts to queue`;};r.readAsText(f);input.value='';}
+function addToQueueWithPrompt(p){const item={prompt:p,negative:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg:+$('cfg').value,seed:-1,n:1};
+let q=JSON.parse(localStorage.getItem('sdproxy_queue')||'[]');q.push(item);localStorage.setItem('sdproxy_queue',JSON.stringify(q));loadQueue();}
 
 function showWildcardHelp(){alert('Wildcards: {a|b|c} = random pick\\nMatrix: [a|b] [c|d] = generates all 4 combinations\\nWeights: (tag:1.2) = increase weight\\nLoRA: <lora:name:0.7>');}
 
