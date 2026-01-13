@@ -438,6 +438,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <button onclick="addToQueue()">+ Queue</button>
 <button onclick="generateMatrix()">Matrix</button>
 <button onclick="showABTest()">A/B Test</button>
+<button onclick="showBackendCompare()">🔀 Compare</button>
 <button onclick="savePreset()">💾 Preset</button>
 <button onclick="randomSeed()">🎲</button>
 </div>
@@ -684,9 +685,12 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <div id="tab-gallery" class="tab-content">
 <div class="card"><div class="flex">
 <h3 style="flex:1">⭐ Favorites Gallery</h3>
+<input id="galleryTagFilter" placeholder="Filter by tag..." oninput="loadFavorites()" style="width:150px">
 <button onclick="loadFavorites()" class="btn-sm">Refresh</button>
 <button onclick="downloadAllFavorites()" class="btn-sm">📥 Download All</button>
-</div></div>
+</div>
+<div id="galleryTags" class="flex mt" style="gap:4px"></div>
+</div>
 <div id="galleryGrid" class="gallery"></div>
 </div>
 
@@ -804,6 +808,23 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <div id="abResults" class="row-2 mt"></div>
 </div>
 </div>
+
+<!-- Backend Compare Modal -->
+<div class="modal" id="compareModal" onclick="if(event.target===this)this.classList.remove('show')">
+<div class="card" style="max-width:900px;max-height:90vh;overflow-y:auto">
+<h3>🔀 Multi-Backend Comparison</h3>
+<p style="color:var(--muted);font-size:11px">Generate the same prompt across multiple backends</p>
+<div class="flex mt">
+<label><input type="checkbox" id="cmpLocal"> Local</label>
+<label><input type="checkbox" id="cmpPollinations" checked> Pollinations</label>
+<label><input type="checkbox" id="cmpNovelai"> NovelAI</label>
+<label><input type="checkbox" id="cmpPixai"> PixAI</label>
+<label><input type="checkbox" id="cmpNanogpt"> NanoGPT</label>
+</div>
+<div class="flex mt"><button onclick="runBackendCompare()" class="btn-primary">Generate All</button><button onclick="$('compareModal').classList.remove('show')">Cancel</button></div>
+<div id="compareResults" class="mt" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px"></div>
+</div>
+</div>
 </div>
 
 <script>
@@ -917,6 +938,24 @@ $('abResults').innerHTML=`<div><h4>A</h4><img src="${urlA}" style="max-width:100
 const resB=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify({...base,prompt:$('abPromptB').value})});
 const dataB=await resB.json();const urlB=dataB.data?.[0]?.url||'data:image/png;base64,'+dataB.data?.[0]?.b64_json;
 $('abResults').innerHTML=`<div><h4>A</h4><img src="${urlA}" style="max-width:100%;cursor:pointer" onclick="showModal('${urlA}')"></div><div><h4>B</h4><img src="${urlB}" style="max-width:100%;cursor:pointer" onclick="showModal('${urlB}')"></div>`;}
+
+// Multi-Backend Comparison
+function showBackendCompare(){$('compareResults').innerHTML='';$('compareModal').classList.add('show');}
+async function runBackendCompare(){
+const backends=[];
+if($('cmpLocal').checked)backends.push('local');
+if($('cmpPollinations').checked)backends.push('pollinations');
+if($('cmpNovelai').checked)backends.push('novelai');
+if($('cmpPixai').checked)backends.push('pixai');
+if($('cmpNanogpt').checked)backends.push('nanogpt');
+if(!backends.length)return alert('Select at least one backend');
+const prompt=$('prompt').value;
+$('compareResults').innerHTML=backends.map(b=>`<div id="cmp-${b}"><h4>${b}</h4><p>Generating...</p></div>`).join('');
+for(const b of backends){
+try{const res=await fetch('/v1/images/generations',{method:'POST',headers:{...getHeaders(),'X-Backend':b},body:JSON.stringify({prompt,negative_prompt:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,n:1})});
+const data=await res.json();const url=data.data?.[0]?.url||'data:image/png;base64,'+data.data?.[0]?.b64_json;
+$('cmp-'+b).innerHTML=`<h4>${b}</h4><img src="${url}" style="max-width:100%;cursor:pointer" onclick="showModal('${url}')">`;}
+catch(e){$('cmp-'+b).innerHTML=`<h4>${b}</h4><p style="color:var(--danger)">Error: ${e.message}</p>`;}}}
 
 // ComfyUI Workflow Library
 let comfyWorkflows=JSON.parse(localStorage.getItem('sdproxy_comfy_workflows')||'[]');
@@ -1271,10 +1310,17 @@ function filterFolder(f){currentFolder=f;document.querySelectorAll('.folder-item
 async function createFolder(){const name=prompt('Folder name:');if(name){await fetch('/api/folders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});loadFolders();}}
 async function loadFolders(){const res=await fetch('/api/folders');const f=await res.json();$('folderList').innerHTML=f.map(x=>`<span class="folder-item" onclick="filterFolder('${x.name}')">${x.name}</span>`).join('');}
 
-// Favorites/Gallery
-async function loadFavorites(){const res=await fetch('/api/favorites');const f=await res.json();allImages=f.map(x=>x.url);
-$('galleryGrid').innerHTML=f.map(x=>`<div class="img-card"><img src="${x.url}" onclick="showModal('${x.url}')"><div class="actions"><button onclick="removeFavorite(${x.id})" class="btn-danger btn-sm">×</button></div></div>`).join('')||'<p style="color:var(--muted)">No favorites</p>';}
-async function addFavorite(url){await fetch('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});loadFavorites();}
+// Favorites/Gallery with tags
+let favoriteTags=JSON.parse(localStorage.getItem('sdproxy_fav_tags')||'{}');
+async function loadFavorites(){const res=await fetch('/api/favorites');const f=await res.json();
+const tagFilter=($('galleryTagFilter')?.value||'').toLowerCase();
+const filtered=tagFilter?f.filter(x=>(favoriteTags[x.id]||[]).some(t=>t.toLowerCase().includes(tagFilter))):f;
+allImages=filtered.map(x=>x.url);
+const allTags=[...new Set(Object.values(favoriteTags).flat())];
+$('galleryTags').innerHTML=allTags.map(t=>`<span class="tag" onclick="$('galleryTagFilter').value='${t}';loadFavorites()">${t}</span>`).join('');
+$('galleryGrid').innerHTML=filtered.map(x=>{const tags=favoriteTags[x.id]||[];return`<div class="img-card"><img src="${x.url}" onclick="showModal('${x.url}')"><div class="actions"><button onclick="tagFavorite(${x.id})" class="btn-sm">🏷️</button><button onclick="removeFavorite(${x.id})" class="btn-danger btn-sm">×</button></div>${tags.length?`<div style="font-size:10px;color:var(--muted)">${tags.join(', ')}</div>`:''}</div>`;}).join('')||'<p style="color:var(--muted)">No favorites</p>';}
+function tagFavorite(id){const current=(favoriteTags[id]||[]).join(', ');const tags=prompt('Tags (comma-separated):',current);if(tags!==null){favoriteTags[id]=tags.split(',').map(t=>t.trim()).filter(t=>t);localStorage.setItem('sdproxy_fav_tags',JSON.stringify(favoriteTags));loadFavorites();}}
+async function addFavorite(url){const res=await fetch('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});loadFavorites();}
 async function removeFavorite(id){await fetch('/api/favorites/'+id,{method:'DELETE'});loadFavorites();}
 function toggleFavorite(){if(currentImage)addFavorite(currentImage);}
 async function downloadAllFavorites(){if(!allImages.length)return alert('No favorites');for(let i=0;i<allImages.length;i++){const a=document.createElement('a');a.href=allImages[i];a.download=`favorite-${i+1}.png`;a.click();await new Promise(r=>setTimeout(r,200));}}
