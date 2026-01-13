@@ -265,7 +265,8 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 </div>
 
 <div id="novelaiSettings" style="display:none" class="mt card">
-<h3>NovelAI Settings</h3>
+<h3 class="collapsible" onclick="toggleCollapse(this)">NovelAI Settings</h3>
+<div>
 <div class="row-2">
 <div><label>Model</label><select id="naiModel">
 <option value="nai-diffusion-4-5-curated">V4.5 Curated</option>
@@ -318,10 +319,11 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div class="mt"><label>Artist/Style Tags <button class="btn-sm" onclick="randomNaiTags()" style="float:right">🎲 Random</button></label>
 <input type="text" id="naiTagSearch" placeholder="Search artists/styles..." oninput="filterNaiTags('naiTagsGrid',this.value)" class="mt">
 <div id="naiTagsGrid" class="flex mt" style="gap:4px;flex-wrap:wrap;max-height:150px;overflow-y:auto"></div></div>
-</div>
+</div></div>
 
 <div id="naisteraSettings" style="display:none" class="mt card">
-<h3>Naistera Settings</h3>
+<h3 class="collapsible" onclick="toggleCollapse(this)">Naistera Settings</h3>
+<div>
 <div class="row-2">
 <div><label>Aspect Ratio</label><select id="naisteraAspect">
 <option value="1:1">1:1 (Square)</option>
@@ -723,8 +725,13 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <div class="card"><div class="flex">
 <h3 style="flex:1">⭐ Favorites Gallery</h3>
 <input id="galleryTagFilter" placeholder="Filter by tag..." oninput="loadFavorites()" style="width:150px">
+<select id="gallerySort" onchange="loadFavorites()" style="width:auto">
+<option value="newest">Newest</option>
+<option value="oldest">Oldest</option>
+</select>
 <button onclick="loadFavorites()" class="btn-sm">Refresh</button>
-<button onclick="downloadAllFavorites()" class="btn-sm">📥 Download All</button>
+<button onclick="startSlideshow()" class="btn-sm">▶️ Slideshow</button>
+<button onclick="downloadAllFavorites()" class="btn-sm">📥 Download</button>
 </div>
 <div id="galleryTags" class="flex mt" style="gap:4px"></div>
 </div>
@@ -1436,7 +1443,8 @@ async function loadFolders(){const res=await fetch('/api/folders');const f=await
 let favoriteTags=JSON.parse(localStorage.getItem('sdproxy_fav_tags')||'{}');
 async function loadFavorites(){const res=await fetch('/api/favorites');const f=await res.json();
 const tagFilter=($('galleryTagFilter')?.value||'').toLowerCase();
-const filtered=tagFilter?f.filter(x=>(favoriteTags[x.id]||[]).some(t=>t.toLowerCase().includes(tagFilter))):f;
+let filtered=tagFilter?f.filter(x=>(favoriteTags[x.id]||[]).some(t=>t.toLowerCase().includes(tagFilter))):f;
+if($('gallerySort')?.value==='oldest')filtered=filtered.reverse();
 const count=filtered.length;$('galleryCount').textContent=count||'';$('galleryCount').style.display=count?'':'none';
 allImages=filtered.map(x=>x.url);
 const allTags=[...new Set(Object.values(favoriteTags).flat())];
@@ -1447,6 +1455,12 @@ async function addFavorite(url){await fetch('/api/favorites',{method:'POST',head
 async function removeFavorite(id){await fetch('/api/favorites/'+id,{method:'DELETE'});loadFavorites();}
 function toggleFavorite(){if(currentImage){addFavorite(currentImage);}}
 async function downloadAllFavorites(){if(!allImages.length)return toast('No favorites');toast('Downloading...');for(let i=0;i<allImages.length;i++){const a=document.createElement('a');a.href=allImages[i];a.download=`favorite-${i+1}.png`;a.click();await new Promise(r=>setTimeout(r,200));}toast('Download complete');}
+
+// Slideshow
+let slideshowInterval=null;
+function startSlideshow(){if(!allImages.length)return toast('No images');currentIndex=0;openLightbox(allImages[0]);slideshowInterval=setInterval(()=>{currentIndex=(currentIndex+1)%allImages.length;$('lightboxImg').src=allImages[currentIndex];},3000);toast('Slideshow started (3s)');}
+function stopSlideshow(){if(slideshowInterval){clearInterval(slideshowInterval);slideshowInterval=null;}}
+const origCloseLightbox=closeLightbox;closeLightbox=()=>{stopSlideshow();$('lightbox').classList.remove('show');}
 
 // Presets
 async function loadPresets(){const res=await fetch('/api/presets');const p=await res.json();
