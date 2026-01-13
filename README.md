@@ -268,17 +268,48 @@ GET/DELETE /api/costs           Cost tracking
 
 ### Automatic1111 WebUI
 
+**1. Start A1111 with API enabled:**
 ```bash
-./webui.sh --api
+./webui.sh --api --listen
 ```
+Or on Windows, edit `webui-user.bat` and add `--api` to `COMMANDLINE_ARGS`.
 
-For ControlNet, install [sd-webui-controlnet](https://github.com/Mikubill/sd-webui-controlnet).
+**2. In SD Proxy:**
+- Select "Local A1111" backend
+- Set URL in Settings tab (default: `http://127.0.0.1:7860`)
+- Generate!
+
+All settings (prompt, negative, size, steps, CFG, sampler, seed, hires fix, etc.) work automatically.
 
 ### ComfyUI
 
+ComfyUI uses workflow files instead of simple parameters.
+
+**1. Start ComfyUI:**
 ```bash
 python main.py
 ```
+
+**2. Create your workflow in ComfyUI's web interface**
+
+**3. Export workflow:**
+- Enable Dev Mode: Settings → Enable Dev Mode Options
+- Click "Save (API Format)" to download the workflow JSON
+
+**4. In SD Proxy:**
+- Select "ComfyUI" backend
+- Set URL in Settings tab (default: `http://127.0.0.1:8188`)
+- Paste your workflow JSON into the textarea
+- Use placeholders in your workflow that SD Proxy will replace:
+  - `%prompt%` → your prompt
+  - `%negative%` → negative prompt
+  - `%seed%` → seed value
+  - `%width%` → width
+  - `%height%` → height
+  - `%steps%` → steps
+  - `%cfg%` → CFG scale
+
+**Example:** In your workflow's KSampler node, set seed to `%seed%` and it will be replaced with the actual seed value.
 
 ---
 
