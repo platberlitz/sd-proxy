@@ -115,15 +115,15 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div id="tab-generate" class="tab-content active">
 <div class="card">
 <div class="row-3">
-<div><label>Backend</label><select id="backend" onchange="onBackendChange()">
+<div><label>Backend</label><select id="backend" onchange="onBackendChange();saveSettings()">
 <option value="local">Local A1111</option><option value="comfyui">ComfyUI</option><option value="pollinations">Pollinations (Free)</option>
 <option value="nanogpt">NanoGPT</option><option value="gemini">Gemini (Nano Banana)</option><option value="novelai">NovelAI</option><option value="naistera">Naistera</option><option value="pixai">PixAI</option><option value="stability">Stability AI</option>
 <option value="replicate">Replicate</option><option value="fal">Fal.ai</option><option value="together">Together AI</option><option value="custom">Custom</option>
 </select></div>
-<div id="apiKeyRow"><label>API Key</label><div style="display:flex;gap:4px"><input type="password" id="apiKey" placeholder="If required" onkeydown="if(event.key==='Enter')fetchBackendModels()" style="flex:1"><button class="btn-sm" onclick="fetchBackendModels()">Fetch Models</button></div></div>
+<div id="apiKeyRow"><label>API Key</label><div style="display:flex;gap:4px"><input type="password" id="apiKey" placeholder="If required" onkeydown="if(event.key==='Enter')fetchBackendModels()" onchange="saveSettings()" style="flex:1"><button class="btn-sm" onclick="fetchBackendModels()">Fetch Models</button></div></div>
 <div id="modelRow"><label>Model</label><div id="modelContainer"><select id="model"><option value="">Select model</option></select></div></div>
 </div>
-<div id="customEndpoint" style="display:none" class="mt"><label>Custom URL</label><input id="customUrl" placeholder="https://api.example.com/v1"></div>
+<div id="customEndpoint" style="display:none" class="mt"><label>Custom URL</label><input id="customUrl" placeholder="https://api.example.com/v1" onchange="saveSettings()"></div>
 <div id="comfyuiSettings" style="display:none" class="mt card">
 <h3>ComfyUI Workflow</h3>
 <p style="color:var(--muted);font-size:11px;margin-bottom:8px">Export workflow from ComfyUI: Settings → Enable Dev Mode → Save (API Format). Use placeholders: %prompt%, %negative%, %seed%, %width%, %height%, %steps%, %cfg%</p>
@@ -783,8 +783,8 @@ async function fetchBackendModels(){
     }catch(e){setInput('Enter model name');}
 }
 
-function saveSettings(){settings={localUrl:$('localUrl').value,comfyUrl:$('comfyUrl').value,qualityTags:$('qualityTags').value};localStorage.setItem('sdproxy_settings',JSON.stringify(settings));}
-function loadSettings(){if(settings.localUrl)$('localUrl').value=settings.localUrl;if(settings.comfyUrl)$('comfyUrl').value=settings.comfyUrl;if(settings.qualityTags)$('qualityTags').value=settings.qualityTags;}
+function saveSettings(){settings={localUrl:$('localUrl').value,comfyUrl:$('comfyUrl').value,qualityTags:$('qualityTags').value,apiKey:$('apiKey').value,customUrl:$('customUrl').value,backend:$('backend').value};localStorage.setItem('sdproxy_settings',JSON.stringify(settings));}
+function loadSettings(){if(settings.localUrl)$('localUrl').value=settings.localUrl;if(settings.comfyUrl)$('comfyUrl').value=settings.comfyUrl;if(settings.qualityTags)$('qualityTags').value=settings.qualityTags;if(settings.apiKey)$('apiKey').value=settings.apiKey;if(settings.customUrl)$('customUrl').value=settings.customUrl;if(settings.backend){$('backend').value=settings.backend;onBackendChange();}}
 
 // Wildcard & Matrix
 function expandWildcards(text){return text.replace(/\{([^}]+)\}/g,(m,p)=>{const opts=p.split('|');return opts[Math.floor(Math.random()*opts.length)];});}
