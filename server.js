@@ -452,27 +452,39 @@ const backends = {
         if (!apiKey) throw new Error('Naistera requires API token');
         
         const opts = body.naistera || {};
-        const params = new URLSearchParams({ token: apiKey });
-        if (opts.aspect_ratio) params.set('aspect_ratio', opts.aspect_ratio);
-        if (opts.preset) params.set('preset', opts.preset);
+        const n = body.n || 1;
+        const varietyWords = ['', ', detailed', ', beautiful', ', stunning', ', elegant', ', graceful', ', vibrant', ', atmospheric'];
         
-        const url = `https://naistera.org/prompt/${encodeURIComponent(body.prompt)}?${params}`;
-        log(sessionId, `Naistera request: ${url.substring(0, 80)}...`);
+        const results = [];
+        for (let i = 0; i < Math.min(n, 4); i++) {
+            let variedPrompt = body.prompt;
+            if (n > 1) {
+                const variety = varietyWords[i % varietyWords.length];
+                variedPrompt = body.prompt + variety;
+            }
+            
+            const params = new URLSearchParams({ token: apiKey });
+            if (opts.aspect_ratio) params.set('aspect_ratio', opts.aspect_ratio);
+            if (opts.preset) params.set('preset', opts.preset);
+            
+            const url = `https://naistera.org/prompt/${encodeURIComponent(variedPrompt)}?${params}`;
+            log(sessionId, `Naistera request ${i+1}: ${url.substring(0, 80)}...`);
+            
+            // Longer timeout for Naistera (especially 16:9 which can be slow)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+            
+            const res = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (!res.ok) throw new Error(`Naistera error: ${res.status}`);
+            
+            const buffer = await res.arrayBuffer();
+            const b64 = Buffer.from(buffer).toString('base64');
+            results.push({ b64_json: b64 });
+        }
         
-        // Longer timeout for Naistera (especially 16:9 which can be slow)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
-        
-        const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (!res.ok) throw new Error(`Naistera error: ${res.status}`);
-        
-        const buffer = await res.arrayBuffer();
-        const b64 = Buffer.from(buffer).toString('base64');
-        const contentType = res.headers.get('content-type') || 'image/png';
-        
-        log(sessionId, `Naistera returned image (${contentType})`);
-        return { data: [{ b64_json: b64 }] };
+        log(sessionId, `Naistera returned ${results.length} images`);
+        return { data: results };
     },
     
     async pixai(body, headers, sessionId) {
