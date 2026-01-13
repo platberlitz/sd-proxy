@@ -103,6 +103,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <button class="tab" onclick="showTab('history')">History</button>
 <button class="tab" onclick="showTab('gallery')">Gallery</button>
 <button class="tab" onclick="showTab('models')">Models</button>
+<button class="tab" onclick="showTab('console')">Console</button>
 <button class="tab" onclick="showTab('settings')">Settings</button>
 </div>
 
@@ -404,6 +405,17 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 </div>
 </div>
 
+<!-- Console Tab -->
+<div id="tab-console" class="tab-content">
+<div class="card">
+<div class="flex"><h3 style="flex:1">📋 Real-time Logs</h3>
+<label><input type="checkbox" id="consoleAutoScroll" checked> Auto-scroll</label>
+<button class="btn-sm" onclick="clearConsole()">Clear</button>
+</div>
+<pre id="consoleOutput" style="background:#0d1a0d;padding:10px;border-radius:4px;height:500px;overflow-y:auto;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;margin-top:10px;"></pre>
+</div>
+</div>
+
 <!-- Settings Tab -->
 <div id="tab-settings" class="tab-content">
 <div class="card">
@@ -508,7 +520,15 @@ function removeTag(tag){$('prompt').value=$('prompt').value.split(',').map(t=>t.
 const evtSource=new EventSource('/api/progress');
 evtSource.onmessage=e=>{const d=JSON.parse(e.data);
 if(d.type==='generation'){$('mainProgress').style.display='block';$('progressFill').style.width=(d.progress*100)+'%';$('progressText').textContent=Math.round(d.progress*100)+'%';$('progressIndicator').style.display=d.done?'none':'inline';if(d.done)setTimeout(()=>$('mainProgress').style.display='none',1000);}
-if(d.type==='download'){$('downloadProgress').textContent=`Downloading: ${Math.round(d.progress*100)}%`;}};
+if(d.type==='download'){$('downloadProgress').textContent=`Downloading: ${Math.round(d.progress*100)}%`;}
+if(d.type==='log')appendLog(d.message,d.level);};
+
+// Console logging
+const logSource=new EventSource('/api/logs');
+logSource.onmessage=e=>{const d=JSON.parse(e.data);appendLog(d.message,d.level);};
+function appendLog(msg,level='info'){const el=$('consoleOutput');if(!el)return;const time=new Date().toLocaleTimeString();const color=level==='error'?'#e94560':level==='warn'?'#f0a500':'#c8d6c8';el.innerHTML+=`<span style="color:var(--muted)">[${time}]</span> <span style="color:${color}">${escapeHtml(msg)}</span>\n`;if($('consoleAutoScroll').checked)el.scrollTop=el.scrollHeight;}
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function clearConsole(){$('consoleOutput').innerHTML='';}
 
 function getHeaders(){const h={'Content-Type':'application/json','X-Backend':$('backend').value,'X-Local-Url':$('localUrl').value};if($('apiKey').value)h['Authorization']='Bearer '+$('apiKey').value;if($('backend').value==='custom')h['X-Custom-Url']=$('customUrl').value;return h;}
 

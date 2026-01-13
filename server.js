@@ -51,6 +51,22 @@ function sendProgress(data) {
     progressClients.forEach(c => c.write(`data: ${JSON.stringify(data)}\n\n`));
 }
 
+// Logs SSE endpoint
+let logClients = [];
+app.get('/api/logs', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    logClients.push(res);
+    req.on('close', () => { logClients = logClients.filter(c => c !== res); });
+});
+
+function log(message, level = 'info') {
+    const entry = `[${new Date().toISOString()}] [${level.toUpperCase()}] ${message}`;
+    console.log(entry);
+    logClients.forEach(c => c.write(`data: ${JSON.stringify({ message, level })}\n\n`));
+}
+
 // Prompt matrix expansion: [a|b] [c|d] -> 4 prompts
 function expandMatrix(prompt) {
     const matches = prompt.match(/\[([^\]]+)\]/g);
@@ -334,19 +350,22 @@ const backends = {
         // Build message content with reference images
         const content = [];
         if (body.reference_images?.length) {
+            log(`Adding ${body.reference_images.length} reference images to request`);
             for (const img of body.reference_images) {
                 content.push({ type: 'image_url', image_url: { url: img } });
             }
         }
         content.push({ type: 'text', text: body.prompt });
         
+        log(`Custom backend request to: ${customUrl}`);
         const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify({ model: body.model || 'gpt-4o', messages: [{ role: 'user', content }] }) });
         const data = await res.json();
+        log(`Custom backend response status: ${res.status}`);
         const msg = data.choices?.[0]?.message || {};
-        if (msg.images?.length) return { data: msg.images.map(img => ({ url: img.image_url?.url || img.url })) };
+        if (msg.images?.length) { log(`Found ${msg.images.length} images in response`); return { data: msg.images.map(img => ({ url: img.image_url?.url || img.url })) }; }
         const msgContent = msg.content || '';
         const urls = msgContent.match(/https?:\/\/[^\s\)]+\.(png|jpg|jpeg|webp|gif)/gi) || [];
-        if (urls.length) return { data: urls.map(url => ({ url })) };
+        if (urls.length) { log(`Found ${urls.length} image URLs in content`); return { data: urls.map(url => ({ url })) }; }
         throw new Error(msgContent || JSON.stringify(data));
     }
 };
@@ -542,9 +561,15 @@ app.delete('/api/templates/:id', (req, res) => { templates = templates.filter(t 
 app.post('/v1/images/generations', async (req, res) => {
     try {
         const backend = req.headers['x-backend'] || 'local';
+        log(`Generation request: backend=${backend}, model=${req.body.model || 'default'}`);
+        log(`Prompt: ${(req.body.prompt || '').substring(0, 100)}...`);
+        if (req.body.reference_images?.length) log(`Reference images: ${req.body.reference_images.length}`);
+        
         const handler = backends[backend];
         if (!handler) throw new Error('Unknown backend: ' + backend);
         const result = await handler(req.body, req.headers);
+        
+        log(`Generation complete: ${result.data?.length || 0} images`);
         
         // Track costs
         const cost = req.body.cost || 0;
@@ -563,7 +588,7 @@ app.post('/v1/images/generations', async (req, res) => {
         }
         
         res.json(result);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { log(`Generation error: ${e.message}`, 'error'); res.status(500).json({ error: e.message }); }
 });
 
 // Queue endpoints
