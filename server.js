@@ -631,7 +631,7 @@ const backends = {
         if (body.steps) params.samplingSteps = body.steps;
         if (body.cfg_scale) params.cfgScale = body.cfg_scale;
         if (body.seed) params.seed = body.seed;
-        if (opts.sampler || body.sampler) params.samplingMethod = opts.sampler || body.sampler;
+        if (opts.sampler) params.samplingMethod = opts.sampler;
         
         // LoRAs
         if (body.loras?.length) {
