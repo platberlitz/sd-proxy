@@ -1618,7 +1618,7 @@ async function showMetadata(){if(!currentImage)return;try{const res=await fetch(
 
 // Export/Import
 function exportData(){
-const d={settings,presets:JSON.parse(localStorage.getItem('sdproxy_presets')||'[]'),templates:JSON.parse(localStorage.getItem('sdproxy_templates')||'[]'),history:JSON.parse(localStorage.getItem('sdproxy_history')||'[]'),favorites:JSON.parse(localStorage.getItem('sdproxy_favorites')||'[]'),folders:JSON.parse(localStorage.getItem('sdproxy_folders')||'{}'),costs:JSON.parse(localStorage.getItem('sdproxy_costs')||'{}')};
+const d={settings,presets:JSON.parse(localStorage.getItem('sdproxy_presets')||'[]'),templates:JSON.parse(localStorage.getItem('sdproxy_templates')||'[]'),history:JSON.parse(localStorage.getItem('sdproxy_history')||'[]'),favorites:JSON.parse(localStorage.getItem('sdproxy_favorites')||'[]'),folders:JSON.parse(localStorage.getItem('sdproxy_folders')||'{}'),costs:JSON.parse(localStorage.getItem('sdproxy_costs')||'{}'),pixaiModels:JSON.parse(localStorage.getItem('pixai_models')||'[]'),pixaiLoras:JSON.parse(localStorage.getItem('pixai_loras')||'[]')};
 const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sdproxy-backup.json';a.click();}
 function importData(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);
 if(d.settings)localStorage.setItem('sdproxy_settings',JSON.stringify(d.settings));
@@ -1628,6 +1628,8 @@ if(d.history)localStorage.setItem('sdproxy_history',JSON.stringify(d.history));
 if(d.favorites)localStorage.setItem('sdproxy_favorites',JSON.stringify(d.favorites));
 if(d.folders)localStorage.setItem('sdproxy_folders',JSON.stringify(d.folders));
 if(d.costs)localStorage.setItem('sdproxy_costs',JSON.stringify(d.costs));
+if(d.pixaiModels)localStorage.setItem('pixai_models',JSON.stringify(d.pixaiModels));
+if(d.pixaiLoras)localStorage.setItem('pixai_loras',JSON.stringify(d.pixaiLoras));
 alert('Imported');location.reload();}catch{alert('Invalid file');}};r.readAsText(f);}
 
 function importBatchPrompts(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
