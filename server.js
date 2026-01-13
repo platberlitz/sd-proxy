@@ -459,7 +459,12 @@ const backends = {
         const url = `https://naistera.org/prompt/${encodeURIComponent(body.prompt)}?${params}`;
         log(sessionId, `Naistera request: ${url.substring(0, 80)}...`);
         
-        const res = await fetch(url);
+        // Longer timeout for Naistera (especially 16:9 which can be slow)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+        
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
         if (!res.ok) throw new Error(`Naistera error: ${res.status}`);
         
         const buffer = await res.arrayBuffer();
