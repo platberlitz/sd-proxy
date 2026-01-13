@@ -3,8 +3,45 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const session = require('express-session');
 const app = express();
+
+// Auth config
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASS = process.env.ADMIN_PASS || 'admin';
+
 app.use(express.json({ limit: '100mb' }));
+app.use(session({ secret: process.env.SESSION_SECRET || 'sd-proxy-secret', resave: false, saveUninitialized: false }));
+
+// Auth middleware
+function auth(req, res, next) {
+    if (req.session.loggedIn) return next();
+    if (req.path === '/login' || req.path.startsWith('/api/')) return next();
+    res.redirect('/login');
+}
+
+// Login page
+app.get('/login', (req, res) => res.send(`
+<!DOCTYPE html><html><head><title>Login - SD Proxy</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>*{box-sizing:border-box}body{font-family:system-ui;background:#0d1a0d;color:#c8e6c9;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.card{background:#1a2e1a;padding:2rem;border-radius:12px;width:100%;max-width:360px;border:1px solid #2d5a2d}h1{margin:0 0 1.5rem;text-align:center;color:#4caf50}input{width:100%;padding:12px;margin:8px 0;border:1px solid #2d5a2d;border-radius:6px;background:#0d1a0d;color:#c8e6c9}button{width:100%;padding:12px;background:#4caf50;border:none;border-radius:6px;color:#fff;font-size:16px;cursor:pointer;margin-top:12px}button:hover{background:#66bb6a}.error{color:#f44336;text-align:center;margin-top:8px}</style></head>
+<body><div class="card"><h1>🎨 SD Proxy</h1><form method="POST" action="/login">
+<input name="user" placeholder="Username" required>
+<input name="pass" type="password" placeholder="Password" required>
+<button type="submit">Login</button>
+${req.query.error ? '<p class="error">Invalid credentials</p>' : ''}
+</form></div></body></html>`));
+
+app.post('/login', express.urlencoded({ extended: true }), (req, res) => {
+    if (req.body.user === ADMIN_USER && req.body.pass === ADMIN_PASS) {
+        req.session.loggedIn = true;
+        res.redirect('/');
+    } else res.redirect('/login?error=1');
+});
+
+app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
+
+app.use(auth);
 app.use(express.static('public'));
 
 // Data storage
