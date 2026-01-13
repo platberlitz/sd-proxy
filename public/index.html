@@ -1238,9 +1238,9 @@ async function generate(){
             hires_fix:$('hiresFix').checked,hires_scale:+$('hiresScale').value,face_restore:$('faceRestore').checked,tiling:$('tiling').checked};
         if(refImages.length)body.reference_images=refImages;
         if($('backend').value==='pixai'){
-            if($('pixaiModel').value)body.model=$('pixaiModel').value;
             if($('pixaiLoras').value){body.loras=$('pixaiLoras').value.split(',').map(l=>{const[id,w]=l.trim().split(':');return{id:id.trim(),weight:parseFloat(w)||0.8};}).filter(l=>l.id);}
             body.pixai={
+                modelId:$('pixaiModel').value,
                 sampler:$('pixaiSampler').value,
                 enableADetailer:$('pixaiFaceFix').checked,
                 promptHelper:$('pixaiPromptHelper').checked,
