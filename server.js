@@ -956,4 +956,9 @@ app.post('/v1/chat/completions', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`SD Proxy running on http://localhost:${PORT}`));
+const server = app.listen(PORT, () => console.log(`SD Proxy running on http://localhost:${PORT}`));
+
+// Increase timeout for large image generations
+server.timeout = 300000; // 5 minutes
+server.keepAliveTimeout = 300000;
+server.headersTimeout = 300000;
