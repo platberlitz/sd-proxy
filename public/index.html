@@ -141,7 +141,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div class="row-3">
 <div><label>Backend</label><select id="backend" onchange="onBackendChange();saveSettings()">
 <option value="local">Local A1111</option><option value="comfyui">ComfyUI</option><option value="pollinations">Pollinations (Free)</option>
-<option value="nanogpt">NanoGPT</option><option value="gemini">Gemini (Nano Banana)</option><option value="novelai">NovelAI</option><option value="naistera">Naistera</option><option value="civitai">CivitAI</option><option value="pixai">PixAI</option><option value="stability">Stability AI</option>
+<option value="nanogpt">NanoGPT</option><option value="gemini">Gemini (Nano Banana)</option><option value="novelai">NovelAI (DEPRECATED)</option><option value="naistera">Naistera</option><option value="civitai">CivitAI</option><option value="pixai">PixAI</option><option value="stability">Stability AI</option>
 <option value="replicate">Replicate</option><option value="fal">Fal.ai</option><option value="together">Together AI</option><option value="custom">Custom</option>
 </select></div>
 <div id="apiKeyRow"><label>API Key</label><div style="display:flex;gap:4px"><input type="password" id="apiKey" placeholder="If required" onkeydown="if(event.key==='Enter')fetchBackendModels()" onchange="saveSettings()" style="flex:1"><button class="btn-sm" id="fetchModelsBtn" onclick="fetchBackendModels()">Fetch Models</button></div></div>

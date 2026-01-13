@@ -359,75 +359,7 @@ const backends = {
     },
     
     async novelai(body, headers, sessionId) {
-        const apiKey = headers.authorization?.replace('Bearer ', '');
-        if (!apiKey) throw new Error('NovelAI requires API key');
-        
-        const nai = body.nai || {};
-        const model = nai.model || 'nai-diffusion-4-5-curated';
-        const params = {
-            width: body.width || 832,
-            height: body.height || 1216,
-            n_samples: body.n || 1,
-            seed: body.seed ?? Math.floor(Math.random() * 2147483647),
-            sampler: nai.sampler || 'k_euler_ancestral',
-            steps: nai.steps || 28,
-            scale: nai.scale || 5,
-            cfg_rescale: nai.cfg_rescale || 0,
-            noise_schedule: nai.noise_schedule || 'native',
-            uc_preset: nai.uc_preset ?? 0,
-            uncond_scale: nai.uncond_scale || 1,
-            negative_prompt: body.negative_prompt || '',
-            sm: nai.smea || false,
-            sm_dyn: nai.smea_dyn || false,
-            decrisper: nai.decrisper || false,
-            quality_toggle: nai.quality_toggle !== false,
-            variety_plus: nai.variety_plus || false
-        };
-        
-        log(sessionId, `NovelAI request: model=${model}, ${params.width}x${params.height}, steps=${params.steps}`);
-        
-        const res = await fetch('https://image.novelai.net/ai/generate-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            body: JSON.stringify({
-                input: body.prompt,
-                model: model,
-                action: 'generate',
-                parameters: params
-            })
-        });
-        
-        if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(`NovelAI error ${res.status}: ${errText}`);
-        }
-        
-        // NovelAI returns a zip file with PNG images
-        const zipBuffer = await res.arrayBuffer();
-        const bytes = new Uint8Array(zipBuffer);
-        
-        // Find PNG signatures in the zip
-        const images = [];
-        for (let i = 0; i < bytes.length - 8; i++) {
-            if (bytes[i] === 0x89 && bytes[i+1] === 0x50 && bytes[i+2] === 0x4E && bytes[i+3] === 0x47) {
-                // Find PNG end
-                let end = i + 8;
-                while (end < bytes.length - 8) {
-                    if (bytes[end] === 0x49 && bytes[end+1] === 0x45 && bytes[end+2] === 0x4E && bytes[end+3] === 0x44) {
-                        end += 8; // Include IEND chunk
-                        break;
-                    }
-                    end++;
-                }
-                const pngData = bytes.slice(i, end);
-                const b64 = Buffer.from(pngData).toString('base64');
-                images.push({ b64_json: b64 });
-                i = end - 1;
-            }
-        }
-        
-        log(sessionId, `NovelAI returned ${images.length} image(s)`);
-        return { data: images };
+        throw new Error('NovelAI API image generation was deprecated on March 21, 2024. Please use a different backend.');
     },
     
     async gemini(body, headers, sessionId) {
