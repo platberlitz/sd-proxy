@@ -550,7 +550,7 @@ const backends = {
         if (body.steps) params.samplingSteps = body.steps;
         if (body.cfg_scale) params.cfgScale = body.cfg_scale;
         if (body.seed) params.seed = body.seed;
-        if (opts.sampler) params.samplingMethod = opts.sampler;
+        if (opts.sampler || body.sampler) params.samplingMethod = opts.sampler || body.sampler;
         
         // LoRAs
         if (body.loras?.length) {
@@ -577,7 +577,7 @@ const backends = {
         // Prompt helper
         if (opts.promptHelper) params.promptHelper = { enable: true };
         
-        log(sessionId, `PixAI request: model=${params.modelId}, ${params.width}x${params.height}`);
+        log(sessionId, `PixAI request: model=${params.modelId}, ${params.width}x${params.height}, sampler=${params.samplingMethod || 'default'}`);
         
         const createRes = await fetch('https://api.pixai.art/v1/task', {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
