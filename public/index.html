@@ -3,8 +3,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0d1a0d;--card:#142014;--border:#2d4a2d;--text:#c8d6c8;--muted:#6b8e6b;--accent:#4ade80;--danger:#e94560;--btn-bg:#2d5a2d;--btn-hover:#3d6a3d}
-.light-theme{--bg:#e8f5e9;--card:#f1f8f2;--border:#a5d6a7;--text:#1b5e20;--muted:#4a7c4f;--accent:#2e7d32;--danger:#c62828;--btn-bg:#c8e6c9;--btn-hover:#a5d6a7}
+:root{--bg:#0d1a0d;--card:#142014;--border:#2d4a2d;--text:#c8d6c8;--muted:#6b8e6b;--accent:#4ade80;--danger:#e94560;--btn-bg:#2d5a2d;--btn-hover:#3d6a3d;--section-bg:linear-gradient(90deg,#1a3a1a,transparent)}
+.light-theme{--bg:#e8f5e9;--card:#f1f8f2;--border:#a5d6a7;--text:#1b5e20;--muted:#4a7c4f;--accent:#2e7d32;--danger:#c62828;--btn-bg:#c8e6c9;--btn-hover:#a5d6a7;--section-bg:linear-gradient(90deg,#b2dfb4,transparent)}
 body{font-family:-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:10px;font-size:13px}
 .container{max-width:1400px;margin:0 auto}
 h1{color:var(--accent);font-size:18px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
@@ -86,7 +86,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 .lora-card img{width:100%;border-radius:3px;margin-bottom:4px}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--accent);padding:12px 20px;border-radius:6px;z-index:10000;animation:slideIn 0.3s}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-.collapsible{cursor:pointer;user-select:none;padding:8px 12px;margin:-12px -12px 10px -12px;background:linear-gradient(90deg,#1a3a1a,transparent);border-bottom:1px solid var(--border);border-radius:6px 6px 0 0}
+.collapsible{cursor:pointer;user-select:none;padding:8px 12px;margin:-12px -12px 10px -12px;background:var(--section-bg);border-bottom:1px solid var(--border);border-radius:6px 6px 0 0}
 .collapsible::before{content:'▼';margin-right:8px;font-size:10px;display:inline-block;transition:transform 0.2s}
 .collapsible.collapsed{margin-bottom:-12px;border-radius:6px;border-bottom:none}
 .collapsible.collapsed::before{transform:rotate(-90deg)}.collapsible.collapsed+div{display:none!important}
