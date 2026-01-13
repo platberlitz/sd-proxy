@@ -1,5 +1,12 @@
 # SD Proxy
 
+## TL;DR
+Multi-backend image generation proxy with web UI. Supports 12+ backends (A1111, ComfyUI, NovelAI, PixAI, Naistera, etc.) with OpenAI-compatible API. Features: prompt AI, queue system, history, gallery, real-time progress, export/import.
+
+**Quick start:** `git clone → npm install → npm start → http://localhost:3001`
+
+---
+
 Full-featured image generation proxy with OpenAI-compatible API and comprehensive web dashboard.
 
 ## Quick Start
@@ -101,7 +108,9 @@ Each backend only shows settings it actually supports:
 **Naistera**
 - Aspect Ratio: 1:1, 16:9, 9:16, 3:2, 2:3
 - Presets: Digital Art, Realism
+- Count: 1-4 images with automatic prompt variety
 - **Artist/Style Tags**: Same searchable tags as NovelAI
+- **Auto-prompt limiting**: Prompts truncated to 250 chars to prevent timeouts
 
 **PixAI**
 - Model ID: Get from PixAI URL (pixai.art/model/**MODEL_ID**)
@@ -174,6 +183,7 @@ If your URL doesn't end with either endpoint, `/chat/completions` is appended au
 ### Backend-Specific
 - **NovelAI Artist/Style Tags** - 70+ artists, 50+ styles with search and randomizer
 - **NovelAI Anlas Estimator** - See cost before generating
+- **Naistera Variety Generation** - Multiple images with automatic prompt variations
 - **PixAI Model/LoRA Library** - Save and manage models and LoRAs
 - **ComfyUI Workflow Library** - Save and load multiple workflows
 - **LoRA Browser** - Search and insert LoRAs from A1111
