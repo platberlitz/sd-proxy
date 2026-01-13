@@ -683,9 +683,9 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <option value="custom">Custom URL</option>
 </select></div>
 <div><label>API Key</label><input type="password" id="llmApiKey" placeholder="API Key" onchange="saveLLMSettings();fetchLLMModels()"></div>
-<div><label>Model</label><select id="llmModel" onchange="saveLLMSettings()"></select></div>
+<div><label>Model</label><select id="llmModel" onchange="saveLLMSettings()"></select><input id="llmModelManual" placeholder="Or type model name" style="margin-top:4px" onchange="saveLLMSettings()"></div>
 </div>
-<div id="llmCustomUrl" style="display:none" class="mt"><label>Custom URL</label><input id="llmCustomEndpoint" placeholder="https://api.example.com/v1/chat/completions" onchange="saveLLMSettings();fetchLLMModels()"></div>
+<div id="llmCustomUrl" style="display:none" class="mt"><label>Custom URL</label><input id="llmCustomEndpoint" placeholder="https://api.example.com/v1" onchange="saveLLMSettings();fetchLLMModels()"></div>
 
 <label class="mt">Prompt Style</label>
 <select id="llmPromptStyle" onchange="saveLLMSettings()">
@@ -1389,32 +1389,41 @@ async function enhancePrompt(){
 const LLM_ENDPOINTS={deepseek:'https://api.deepseek.com/v1',openrouter:'https://openrouter.ai/api/v1',openai:'https://api.openai.com/v1'};
 let llmSettings=JSON.parse(localStorage.getItem('sdproxy_llm')||'{}');
 
-function loadLLMSettings(){if(llmSettings.provider)$('llmProvider').value=llmSettings.provider;if(llmSettings.apiKey)$('llmApiKey').value=llmSettings.apiKey;if(llmSettings.customUrl)$('llmCustomEndpoint').value=llmSettings.customUrl;if(llmSettings.style)$('llmPromptStyle').value=llmSettings.style;onLLMProviderChange();if(llmSettings.model)$('llmModel').value=llmSettings.model;}
-function saveLLMSettings(){llmSettings={provider:$('llmProvider').value,apiKey:$('llmApiKey').value,model:$('llmModel').value,customUrl:$('llmCustomEndpoint').value,style:$('llmPromptStyle').value};localStorage.setItem('sdproxy_llm',JSON.stringify(llmSettings));}
+function loadLLMSettings(){if(llmSettings.provider)$('llmProvider').value=llmSettings.provider;if(llmSettings.apiKey)$('llmApiKey').value=llmSettings.apiKey;if(llmSettings.customUrl)$('llmCustomEndpoint').value=llmSettings.customUrl;if(llmSettings.style)$('llmPromptStyle').value=llmSettings.style;if(llmSettings.modelManual)$('llmModelManual').value=llmSettings.modelManual;onLLMProviderChange();if(llmSettings.model)$('llmModel').value=llmSettings.model;}
+function saveLLMSettings(){llmSettings={provider:$('llmProvider').value,apiKey:$('llmApiKey').value,model:$('llmModel').value,modelManual:$('llmModelManual').value,customUrl:$('llmCustomEndpoint').value,style:$('llmPromptStyle').value};localStorage.setItem('sdproxy_llm',JSON.stringify(llmSettings));}
 function onLLMProviderChange(){const p=$('llmProvider').value;$('llmCustomUrl').style.display=p==='custom'?'block':'none';fetchLLMModels();saveLLMSettings();}
 
 async function fetchLLMModels(){
     const provider=$('llmProvider').value;
     const apiKey=$('llmApiKey').value;
-    const baseUrl=provider==='custom'?$('llmCustomEndpoint').value.replace(/\/chat\/completions$/,''):LLM_ENDPOINTS[provider];
-    if(!apiKey||!baseUrl){$('llmModel').innerHTML='<option value="">Enter API key first</option>';return;}
-    $('llmModel').innerHTML='<option value="">Loading models...</option>';
+    const customUrl=$('llmCustomEndpoint').value;
+    const baseUrl=provider==='custom'?customUrl.replace(/\/chat\/completions$/,'').replace(/\/v1$/,''):LLM_ENDPOINTS[provider];
+    if(!apiKey){$('llmModel').innerHTML='<option value="">Enter API key first</option>';return;}
+    if(provider==='custom'&&!customUrl){$('llmModel').innerHTML='<option value="">Enter endpoint URL</option>';return;}
+    $('llmModel').innerHTML='<option value="">Loading...</option>';
     try{
         const res=await fetch(baseUrl+'/models',{headers:{'Authorization':`Bearer ${apiKey}`}});
+        if(!res.ok)throw new Error(res.status);
         const data=await res.json();
-        const models=(data.data||[]).map(m=>m.id).sort();
-        $('llmModel').innerHTML=models.length?models.map(m=>`<option value="${m}">${m}</option>`).join(''):'<option value="">No models found</option>';
-        if(llmSettings.model&&models.includes(llmSettings.model))$('llmModel').value=llmSettings.model;
-    }catch(e){$('llmModel').innerHTML=`<option value="">Error: ${e.message}</option>`;}
+        const models=(data.data||data.models||[]).map(m=>m.id||m.name||m).filter(m=>typeof m==='string').sort();
+        if(models.length){
+            $('llmModel').innerHTML=models.map(m=>`<option value="${m}">${m}</option>`).join('');
+            if(llmSettings.model&&models.includes(llmSettings.model))$('llmModel').value=llmSettings.model;
+        }else throw new Error('No models');
+    }catch(e){
+        // Allow manual entry for custom endpoints
+        $('llmModel').innerHTML=provider==='custom'?'<option value="">Type model name below</option>':'<option value="">Load failed - check API key</option>';
+    }
 }
 
 async function generateLLMPrompt(){
     const request=$('llmRequest').value;if(!request)return alert('Enter a request');
     const provider=$('llmProvider').value;
     const apiKey=$('llmApiKey').value;if(!apiKey)return alert('Enter API key');
-    const model=$('llmModel').value||'gpt-4o-mini';
+    const model=$('llmModelManual').value||$('llmModel').value||'gpt-4o-mini';
     const style=$('llmPromptStyle').value;
-    const baseUrl=provider==='custom'?$('llmCustomEndpoint').value.replace(/\/chat\/completions$/,''):LLM_ENDPOINTS[provider];
+    const customUrl=$('llmCustomEndpoint').value;
+    const baseUrl=provider==='custom'?customUrl.replace(/\/chat\/completions$/,'').replace(/\/v1$/,''):LLM_ENDPOINTS[provider];
     const endpoint=baseUrl+'/chat/completions';
     if(!baseUrl)return alert('Invalid endpoint');
     
