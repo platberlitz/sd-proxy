@@ -12,20 +12,70 @@ npm start
 # Open http://localhost:3001
 ```
 
+## Local vs Online Features
+
+### ✅ Works Online (No Local GPU Required)
+
+These backends run entirely in the cloud - just need an API key:
+
+| Backend | Requirements | Notes |
+|---------|--------------|-------|
+| **Pollinations** | Nothing (free) | No signup, instant use |
+| **NanoGPT** | API key | Flux models, fast |
+| **PixAI** | API key | Anime-focused, LoRA support |
+| **Stability AI** | API key | Official SDXL |
+| **Replicate** | API key | Many model options |
+| **Fal.ai** | API key | Fast inference |
+| **Together AI** | API key | Cost-effective |
+| **Custom** | API key + URL | Any OpenAI-compatible endpoint |
+
+**Online-only features:**
+- Text-to-Image generation
+- Reference images (Custom backend)
+- Prompt AI (LLM prompt generation)
+- All UI features (history, favorites, presets, etc.)
+
+### 🖥️ Requires Local Setup
+
+These features need software running on your computer:
+
+| Feature | Local Requirement |
+|---------|-------------------|
+| **Local A1111** | [Automatic1111 WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) with `--api` flag |
+| **Local ComfyUI** | [ComfyUI](https://github.com/comfyanonymous/ComfyUI) running |
+| **Img2Img** | Local A1111 only |
+| **Inpainting** | Local A1111 only |
+| **Outpainting** | Local A1111 only |
+| **Upscaling** | Local A1111 only |
+| **ControlNet** | Local A1111 + [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) |
+| **Face Restore** | Local A1111 only |
+| **Hires Fix** | Local A1111 only |
+| **Model Switching** | Local A1111 only |
+| **LoRA Browser** | Local A1111 only |
+| **Auto-Caption (BLIP/CLIP)** | Local A1111 only |
+
+### 💡 Recommendation
+
+- **No GPU?** Use Pollinations (free) or get an API key for NanoGPT/PixAI
+- **Have a GPU?** Run A1111 locally for full feature access
+- **Remote server?** Host sd-proxy on a VPS, use cloud backends
+
+---
+
 ## Features Overview
 
 ### 🎨 Generation Modes
 
-| Mode | Description |
-|------|-------------|
-| **Text-to-Image** | Generate from text prompts with wildcards and matrix expansion |
-| **Img2Img** | Transform images with adjustable strength |
-| **Inpainting** | Paint masks to edit specific areas |
-| **Outpainting** | Extend images beyond borders (left/right/up/down) |
-| **Upscaling** | 2x/4x with ESRGAN, R-ESRGAN, Anime6B |
-| **ControlNet** | Guided generation with pose, depth, canny, lineart |
-| **Variations** | Generate slight variations of existing images |
-| **Tiled/Seamless** | Create tileable textures |
+| Mode | Description | Requires |
+|------|-------------|----------|
+| **Text-to-Image** | Generate from text prompts | Any backend |
+| **Img2Img** | Transform images with adjustable strength | Local A1111 |
+| **Inpainting** | Paint masks to edit specific areas | Local A1111 |
+| **Outpainting** | Extend images beyond borders | Local A1111 |
+| **Upscaling** | 2x/4x with ESRGAN, R-ESRGAN, Anime6B | Local A1111 |
+| **ControlNet** | Guided generation with pose, depth, canny | Local A1111 + extension |
+| **Variations** | Generate slight variations of existing images | Local A1111 |
+| **Tiled/Seamless** | Create tileable textures | Local A1111 |
 
 ### 🔌 Supported Backends (10+)
 
