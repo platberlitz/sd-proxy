@@ -121,6 +121,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div><label>Model</label><input id="model" list="modelList" placeholder="Model"><datalist id="modelList"></datalist></div>
 </div>
 <div id="customEndpoint" style="display:none" class="mt"><label>Custom URL</label><input id="customUrl" placeholder="https://api.example.com/v1"></div>
+<div id="pixaiSettings" style="display:none" class="mt"><label>LoRAs (id:weight, comma-separated)</label><input id="pixaiLoras" placeholder="123456:0.8, 789012:0.6"></div>
 
 <label>Prompt <span class="flex" style="float:right;gap:4px">
 <button class="btn-sm" onclick="enhancePrompt()">✨ Enhance</button>
@@ -532,7 +533,7 @@ function showModal(url,info){currentImage=url;$('modalImg').src=url;$('modalInfo
 function closeModal(){$('modal').classList.remove('show');}
 function prevImage(){if(currentIndex>0){currentIndex--;showModal(allImages[currentIndex]);}}
 function nextImage(){if(currentIndex<allImages.length-1){currentIndex++;showModal(allImages[currentIndex]);}}
-function onBackendChange(){$('customEndpoint').style.display=$('backend').value==='custom'?'block':'none';}
+function onBackendChange(){$('customEndpoint').style.display=$('backend').value==='custom'?'block':'none';$('pixaiSettings').style.display=$('backend').value==='pixai'?'block':'none';}
 function randomSeed(){$('seed').value=Math.floor(Math.random()*2147483647);}
 function toggleTheme(){document.body.classList.toggle('light-theme');}
 
@@ -588,6 +589,7 @@ async function generate(){
             sampler:$('sampler').value,scheduler:$('scheduler').value,seed:+$('seed').value,n:+$('batch').value,model:$('model').value,
             hires_fix:$('hiresFix').checked,hires_scale:+$('hiresScale').value,face_restore:$('faceRestore').checked,tiling:$('tiling').checked};
         if(refImages.length)body.reference_images=refImages;
+        if($('backend').value==='pixai'&&$('pixaiLoras').value){body.loras=$('pixaiLoras').value.split(',').map(l=>{const[id,w]=l.trim().split(':');return{id:id.trim(),weight:parseFloat(w)||0.8};}).filter(l=>l.id);}
         if(body.seed<0)delete body.seed;
         const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify(body)});
         const data=await res.json();
