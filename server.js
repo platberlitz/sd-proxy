@@ -470,27 +470,70 @@ const backends = {
         return { data: [{ b64_json: b64 }] };
     },
     
-    async pixai(body, headers) {
+    async pixai(body, headers, sessionId) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('PixAI requires API key');
-        const params = { prompts: body.prompt, modelId: body.model || '1648918127446573124', width: body.width || 512, height: body.height || 768, batchSize: Math.min(body.n || 1, 4) };
+        
+        const opts = body.pixai || {};
+        const params = {
+            prompts: body.prompt,
+            modelId: body.model || opts.modelId || '1648918127446573124',
+            width: body.width || 768,
+            height: body.height || 1280,
+            batchSize: Math.min(body.n || 1, 4)
+        };
+        
+        // Core params
         if (body.negative_prompt) params.negativePrompts = body.negative_prompt;
         if (body.steps) params.samplingSteps = body.steps;
         if (body.cfg_scale) params.cfgScale = body.cfg_scale;
-        if (body.loras?.length) { params.lora = {}; body.loras.forEach(l => { params.lora[l.id] = l.weight || 0.7; }); }
+        if (body.seed) params.seed = body.seed;
+        if (opts.sampler) params.samplingMethod = opts.sampler;
+        
+        // LoRAs
+        if (body.loras?.length) {
+            params.lora = {};
+            body.loras.forEach(l => { params.lora[l.id] = l.weight || 0.7; });
+        }
+        
+        // Quality boosters
+        if (opts.enableADetailer) params.enableADetailer = true;
+        if (opts.upscale > 1) {
+            params.upscale = opts.upscale;
+            if (opts.upscaleSampler) params.upscaleSampler = opts.upscaleSampler;
+            if (opts.upscaleDenoisingStrength) params.upscaleDenoisingStrength = opts.upscaleDenoisingStrength;
+            if (opts.upscaleDenoisingSteps) params.upscaleDenoisingSteps = opts.upscaleDenoisingSteps;
+            if (opts.enableTile) params.enableTile = true;
+        }
+        
+        // Img2Img
+        if (opts.mediaUrl) {
+            params.mediaUrl = opts.mediaUrl;
+            if (opts.strength) params.strength = opts.strength;
+        }
+        
+        // Prompt helper
+        if (opts.promptHelper) params.promptHelper = { enable: true };
+        
+        log(sessionId, `PixAI request: model=${params.modelId}, ${params.width}x${params.height}`);
         
         const createRes = await fetch('https://api.pixai.art/v1/task', {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
             body: JSON.stringify({ parameters: params })
         });
         const createData = await createRes.json();
-        if (!createData.id) throw new Error(createData.message || 'Failed');
+        if (!createData.id) throw new Error(createData.message || 'Failed to create task');
         
-        for (let i = 0; i < 60; i++) {
+        log(sessionId, `PixAI task created: ${createData.id}`);
+        
+        for (let i = 0; i < 120; i++) {
             await new Promise(r => setTimeout(r, 2000));
             const statusRes = await fetch(`https://api.pixai.art/v1/task/${createData.id}`, { headers: { 'Authorization': `Bearer ${apiKey}` } });
             const task = await statusRes.json();
-            if (task.status === 'completed' && task.outputs?.mediaUrls?.length) return { data: task.outputs.mediaUrls.filter(u => u).map(url => ({ url })) };
+            if (task.status === 'completed' && task.outputs?.mediaUrls?.length) {
+                log(sessionId, `PixAI completed: ${task.outputs.mediaUrls.length} images`);
+                return { data: task.outputs.mediaUrls.filter(u => u).map(url => ({ url })) };
+            }
             if (task.status === 'failed') throw new Error('Generation failed');
         }
         throw new Error('Timeout');
