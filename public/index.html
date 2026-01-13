@@ -131,6 +131,8 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <!-- Generate Tab -->
 <div id="tab-generate" class="tab-content active">
 <div class="card">
+<h3 class="collapsible" onclick="toggleCollapse(this)">Backend</h3>
+<div>
 <div class="row-3">
 <div><label>Backend</label><select id="backend" onchange="onBackendChange();saveSettings()">
 <option value="local">Local A1111</option><option value="comfyui">ComfyUI</option><option value="pollinations">Pollinations (Free)</option>
@@ -360,7 +362,10 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 </select></div>
 </div>
 </div>
+</div>
 
+<h3 class="collapsible" onclick="toggleCollapse(this)">Prompt</h3>
+<div>
 <label>Prompt <span class="token-count" id="tokenCount">0 tokens</span><span class="flex" style="float:right;gap:4px">
 <button class="btn-sm" onclick="enhancePrompt()">✨ Enhance</button>
 <button class="btn-sm" onclick="showTemplates()">📝 Templates</button>
@@ -384,7 +389,10 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 </select></span></label>
 <textarea id="negative" rows="2">lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, blurry, deformed, ugly, duplicate, morbid, mutilated, mutation, disfigured, malformed limbs, extra limbs, fused fingers, too many fingers, long neck</textarea>
 </div>
+</div>
 
+<h3 class="collapsible" onclick="toggleCollapse(this)">Settings</h3>
+<div>
 <div id="commonSettings">
 <div class="row-6">
 <div id="sizeSetting"><label>Size Preset</label><select id="sizePreset" onchange="applySizePreset()">
@@ -449,6 +457,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div id="extraInstructionsRow" style="display:none">
 <label class="mt">Extra Instructions</label>
 <textarea id="extraInstructions" rows="2" placeholder="Additional instructions for the image model (e.g., style guidance, specific details)..."></textarea>
+</div>
 </div>
 
 <div class="sticky-gen">
