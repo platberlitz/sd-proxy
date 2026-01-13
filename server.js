@@ -337,6 +337,29 @@ const backends = {
         return { data: images };
     },
     
+    async naistera(body, headers, sessionId) {
+        const apiKey = headers.authorization?.replace('Bearer ', '');
+        if (!apiKey) throw new Error('Naistera requires API token');
+        
+        const opts = body.naistera || {};
+        const params = new URLSearchParams({ token: apiKey });
+        if (opts.aspect_ratio) params.set('aspect_ratio', opts.aspect_ratio);
+        if (opts.preset) params.set('preset', opts.preset);
+        
+        const url = `https://naistera.org/prompt/${encodeURIComponent(body.prompt)}?${params}`;
+        log(sessionId, `Naistera request: ${url.substring(0, 80)}...`);
+        
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Naistera error: ${res.status}`);
+        
+        const buffer = await res.arrayBuffer();
+        const b64 = Buffer.from(buffer).toString('base64');
+        const contentType = res.headers.get('content-type') || 'image/png';
+        
+        log(sessionId, `Naistera returned image (${contentType})`);
+        return { data: [{ b64_json: b64 }] };
+    },
+    
     async pixai(body, headers) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('PixAI requires API key');
