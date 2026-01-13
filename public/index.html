@@ -86,12 +86,13 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 .lora-card img{width:100%;border-radius:3px;margin-bottom:4px}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--accent);padding:12px 20px;border-radius:6px;z-index:10000;animation:slideIn 0.3s}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-.collapsible{cursor:pointer;user-select:none;padding:8px 12px;margin:-12px -12px 10px -12px;background:var(--section-bg);border-bottom:1px solid var(--border);border-radius:6px 6px 0 0}
+.collapsible{cursor:pointer;user-select:none;padding:10px 12px;margin:0 0 12px 0;background:var(--section-bg);border:1px solid var(--border);border-radius:6px;font-weight:600}
 .collapsible::before{content:'▼';margin-right:8px;font-size:10px;display:inline-block;transition:transform 0.2s}
-.collapsible.collapsed{margin-bottom:-12px;border-radius:6px;border-bottom:none}
-.collapsible.collapsed::before{transform:rotate(-90deg)}.collapsible.collapsed+div{display:none!important}
+.collapsible.collapsed::before{transform:rotate(-90deg)}
+.collapsible.collapsed+div{display:none!important}
+.collapsible-content{margin-bottom:16px}
 .section-icon{margin-right:6px}
-.sticky-gen{position:sticky;bottom:0;background:var(--card);padding:10px;margin:-12px;margin-top:10px;border-top:1px solid var(--border);z-index:50}
+.sticky-gen{position:sticky;bottom:0;background:var(--card);padding:12px;margin-top:16px;border-top:1px solid var(--border);border-radius:0 0 6px 6px;z-index:50}
 .badge{background:var(--accent);color:var(--bg);font-size:10px;padding:1px 5px;border-radius:10px;margin-left:4px}
 .aspect-btns button{padding:4px 8px;font-size:18px}
 .token-count{font-size:10px;color:var(--muted);float:right}
