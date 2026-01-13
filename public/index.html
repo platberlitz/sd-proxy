@@ -358,10 +358,10 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <option value="openai">OpenAI</option>
 <option value="custom">Custom URL</option>
 </select></div>
-<div><label>API Key</label><input type="password" id="llmApiKey" placeholder="API Key" onchange="saveLLMSettings()"></div>
+<div><label>API Key</label><input type="password" id="llmApiKey" placeholder="API Key" onchange="saveLLMSettings();fetchLLMModels()"></div>
 <div><label>Model</label><select id="llmModel" onchange="saveLLMSettings()"></select></div>
 </div>
-<div id="llmCustomUrl" style="display:none" class="mt"><label>Custom URL</label><input id="llmCustomEndpoint" placeholder="https://api.example.com/v1/chat/completions" onchange="saveLLMSettings()"></div>
+<div id="llmCustomUrl" style="display:none" class="mt"><label>Custom URL</label><input id="llmCustomEndpoint" placeholder="https://api.example.com/v1/chat/completions" onchange="saveLLMSettings();fetchLLMModels()"></div>
 
 <label class="mt">Prompt Style</label>
 <select id="llmPromptStyle" onchange="saveLLMSettings()">
@@ -745,18 +745,27 @@ async function enhancePrompt(){
 }
 
 // LLM Prompt Generator
-const LLM_ENDPOINTS={deepseek:'https://api.deepseek.com/v1/chat/completions',openrouter:'https://openrouter.ai/api/v1/chat/completions',openai:'https://api.openai.com/v1/chat/completions'};
-const LLM_PROVIDER_MODELS={
-    deepseek:['deepseek-chat','deepseek-reasoner'],
-    openrouter:['deepseek/deepseek-chat','deepseek/deepseek-r1','anthropic/claude-3.5-sonnet','openai/gpt-4o-mini','openai/gpt-4o','google/gemini-2.0-flash-001','meta-llama/llama-3.3-70b-instruct'],
-    openai:['gpt-4o-mini','gpt-4o','gpt-4-turbo','gpt-3.5-turbo'],
-    custom:['custom-model']
-};
+const LLM_ENDPOINTS={deepseek:'https://api.deepseek.com/v1',openrouter:'https://openrouter.ai/api/v1',openai:'https://api.openai.com/v1'};
 let llmSettings=JSON.parse(localStorage.getItem('sdproxy_llm')||'{}');
 
-function loadLLMSettings(){if(llmSettings.provider)$('llmProvider').value=llmSettings.provider;onLLMProviderChange();if(llmSettings.apiKey)$('llmApiKey').value=llmSettings.apiKey;if(llmSettings.model)$('llmModel').value=llmSettings.model;if(llmSettings.customUrl)$('llmCustomEndpoint').value=llmSettings.customUrl;if(llmSettings.style)$('llmPromptStyle').value=llmSettings.style;}
+function loadLLMSettings(){if(llmSettings.provider)$('llmProvider').value=llmSettings.provider;if(llmSettings.apiKey)$('llmApiKey').value=llmSettings.apiKey;if(llmSettings.customUrl)$('llmCustomEndpoint').value=llmSettings.customUrl;if(llmSettings.style)$('llmPromptStyle').value=llmSettings.style;onLLMProviderChange();if(llmSettings.model)$('llmModel').value=llmSettings.model;}
 function saveLLMSettings(){llmSettings={provider:$('llmProvider').value,apiKey:$('llmApiKey').value,model:$('llmModel').value,customUrl:$('llmCustomEndpoint').value,style:$('llmPromptStyle').value};localStorage.setItem('sdproxy_llm',JSON.stringify(llmSettings));}
-function onLLMProviderChange(){const p=$('llmProvider').value;$('llmCustomUrl').style.display=p==='custom'?'block':'none';const models=LLM_PROVIDER_MODELS[p]||[];$('llmModel').innerHTML=models.map(m=>`<option value="${m}">${m}</option>`).join('');saveLLMSettings();}
+function onLLMProviderChange(){const p=$('llmProvider').value;$('llmCustomUrl').style.display=p==='custom'?'block':'none';fetchLLMModels();saveLLMSettings();}
+
+async function fetchLLMModels(){
+    const provider=$('llmProvider').value;
+    const apiKey=$('llmApiKey').value;
+    const baseUrl=provider==='custom'?$('llmCustomEndpoint').value.replace(/\/chat\/completions$/,''):LLM_ENDPOINTS[provider];
+    if(!apiKey||!baseUrl){$('llmModel').innerHTML='<option value="">Enter API key first</option>';return;}
+    $('llmModel').innerHTML='<option value="">Loading models...</option>';
+    try{
+        const res=await fetch(baseUrl+'/models',{headers:{'Authorization':`Bearer ${apiKey}`}});
+        const data=await res.json();
+        const models=(data.data||[]).map(m=>m.id).sort();
+        $('llmModel').innerHTML=models.length?models.map(m=>`<option value="${m}">${m}</option>`).join(''):'<option value="">No models found</option>';
+        if(llmSettings.model&&models.includes(llmSettings.model))$('llmModel').value=llmSettings.model;
+    }catch(e){$('llmModel').innerHTML=`<option value="">Error: ${e.message}</option>`;}
+}
 
 async function generateLLMPrompt(){
     const request=$('llmRequest').value;if(!request)return alert('Enter a request');
@@ -764,8 +773,9 @@ async function generateLLMPrompt(){
     const apiKey=$('llmApiKey').value;if(!apiKey)return alert('Enter API key');
     const model=$('llmModel').value||'gpt-4o-mini';
     const style=$('llmPromptStyle').value;
-    const endpoint=provider==='custom'?$('llmCustomEndpoint').value:LLM_ENDPOINTS[provider];
-    if(!endpoint)return alert('Invalid endpoint');
+    const baseUrl=provider==='custom'?$('llmCustomEndpoint').value.replace(/\/chat\/completions$/,''):LLM_ENDPOINTS[provider];
+    const endpoint=baseUrl+'/chat/completions';
+    if(!baseUrl)return alert('Invalid endpoint');
     
     const sysPrompt=style==='tags'?'You are an expert at creating Danbooru-style image generation prompts. Convert user requests into comma-separated tags. Include character details, pose, expression, clothing, setting, lighting, and quality tags. Output ONLY the tags, no explanation.':'You are an expert at creating natural language image generation prompts. Convert user requests into detailed descriptive paragraphs suitable for photorealistic image generation. Include subject, setting, lighting, mood, camera angle. Output ONLY the description, no explanation.';
     
