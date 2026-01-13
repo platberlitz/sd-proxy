@@ -1219,8 +1219,18 @@ if(data.data?.[0]){const url='data:image/png;base64,'+data.data[0].b64_json;allI
 async function showMetadata(){if(!currentImage)return;try{const res=await fetch('/api/metadata',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:currentImage})});const d=await res.json();alert(d.raw||'No metadata');}catch(e){alert('Error');}}
 
 // Export/Import
-function exportData(){const d={settings};const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sdproxy-backup.json';a.click();}
-function importData(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.settings)localStorage.setItem('sdproxy_settings',JSON.stringify(d.settings));alert('Imported');location.reload();}catch{alert('Invalid');}};r.readAsText(f);}
+function exportData(){
+const d={settings,presets:JSON.parse(localStorage.getItem('sdproxy_presets')||'[]'),templates:JSON.parse(localStorage.getItem('sdproxy_templates')||'[]'),history:JSON.parse(localStorage.getItem('sdproxy_history')||'[]'),favorites:JSON.parse(localStorage.getItem('sdproxy_favorites')||'[]'),folders:JSON.parse(localStorage.getItem('sdproxy_folders')||'{}'),costs:JSON.parse(localStorage.getItem('sdproxy_costs')||'{}')};
+const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sdproxy-backup.json';a.click();}
+function importData(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);
+if(d.settings)localStorage.setItem('sdproxy_settings',JSON.stringify(d.settings));
+if(d.presets)localStorage.setItem('sdproxy_presets',JSON.stringify(d.presets));
+if(d.templates)localStorage.setItem('sdproxy_templates',JSON.stringify(d.templates));
+if(d.history)localStorage.setItem('sdproxy_history',JSON.stringify(d.history));
+if(d.favorites)localStorage.setItem('sdproxy_favorites',JSON.stringify(d.favorites));
+if(d.folders)localStorage.setItem('sdproxy_folders',JSON.stringify(d.folders));
+if(d.costs)localStorage.setItem('sdproxy_costs',JSON.stringify(d.costs));
+alert('Imported');location.reload();}catch{alert('Invalid file');}};r.readAsText(f);}
 
 function showWildcardHelp(){alert('Wildcards: {a|b|c} = random pick\\nMatrix: [a|b] [c|d] = generates all 4 combinations\\nWeights: (tag:1.2) = increase weight\\nLoRA: <lora:name:0.7>');}
 
