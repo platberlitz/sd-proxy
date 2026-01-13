@@ -215,35 +215,72 @@ const backends = {
     
     async comfyui(body, headers, sessionId) {
         const url = headers['x-local-url'] || 'http://127.0.0.1:8188';
-        const seed = body.seed > 0 ? body.seed : Math.floor(Math.random() * 999999999);
         
-        const workflow = {
-            "3": { class_type: "KSampler", inputs: { seed, steps: body.steps || 25, cfg: body.cfg_scale || 7, sampler_name: body.sampler || "dpmpp_2m", scheduler: body.scheduler || "karras", denoise: body.init_image ? (body.strength || 0.75) : 1, model: ["4", 0], positive: ["6", 0], negative: ["7", 0], latent_image: ["5", 0] }},
-            "4": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: body.model || "v1-5-pruned-emaonly.safetensors" }},
-            "5": { class_type: "EmptyLatentImage", inputs: { width: body.width || 512, height: body.height || 768, batch_size: body.n || 1 }},
-            "6": { class_type: "CLIPTextEncode", inputs: { text: body.prompt, clip: ["4", 1] }},
-            "7": { class_type: "CLIPTextEncode", inputs: { text: body.negative_prompt || "", clip: ["4", 1] }},
-            "8": { class_type: "VAEDecode", inputs: { samples: ["3", 0], vae: ["4", 2] }},
-            "9": { class_type: "SaveImage", inputs: { filename_prefix: "sdproxy", images: ["8", 0] }}
+        // User must provide workflow JSON exported from ComfyUI
+        if (!body.workflow) throw new Error('ComfyUI requires workflow JSON. Export from ComfyUI: Save (API Format)');
+        
+        let workflow = typeof body.workflow === 'string' ? JSON.parse(body.workflow) : body.workflow;
+        
+        // Replace placeholders in workflow if provided
+        const replacements = {
+            '%prompt%': body.prompt || '',
+            '%negative%': body.negative_prompt || '',
+            '%seed%': body.seed > 0 ? body.seed : Math.floor(Math.random() * 999999999),
+            '%width%': body.width || 512,
+            '%height%': body.height || 768,
+            '%steps%': body.steps || 25,
+            '%cfg%': body.cfg_scale || 7
         };
+        
+        // Deep replace placeholders in workflow
+        const replaceInObj = (obj) => {
+            for (const key in obj) {
+                if (typeof obj[key] === 'string') {
+                    for (const [placeholder, value] of Object.entries(replacements)) {
+                        obj[key] = obj[key].replace(placeholder, value);
+                    }
+                } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                    replaceInObj(obj[key]);
+                }
+            }
+        };
+        replaceInObj(workflow);
+        
+        log(sessionId, `ComfyUI: Queueing workflow with ${Object.keys(workflow).length} nodes`);
         
         const queueRes = await fetch(`${url}/prompt`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: workflow })
         });
-        const { prompt_id } = await queueRes.json();
-        if (!prompt_id) throw new Error('Failed to queue');
+        const queueData = await queueRes.json();
+        if (!queueData.prompt_id) throw new Error(queueData.error || 'Failed to queue workflow');
         
-        for (let i = 0; i < 120; i++) {
+        log(sessionId, `ComfyUI: Queued as ${queueData.prompt_id}`);
+        
+        // Poll for completion
+        for (let i = 0; i < 300; i++) {
             await new Promise(r => setTimeout(r, 1000));
-            const histRes = await fetch(`${url}/history/${prompt_id}`);
+            const histRes = await fetch(`${url}/history/${queueData.prompt_id}`);
             const hist = await histRes.json();
-            if (hist[prompt_id]?.outputs?.["9"]?.images?.length) {
-                const imgs = hist[prompt_id].outputs["9"].images;
-                return { data: imgs.map(img => ({ url: `${url}/view?filename=${img.filename}&subfolder=${img.subfolder || ''}&type=${img.type || 'output'}` })) };
+            const result = hist[queueData.prompt_id];
+            if (result?.outputs) {
+                // Find any SaveImage/PreviewImage outputs
+                const images = [];
+                for (const nodeId in result.outputs) {
+                    const output = result.outputs[nodeId];
+                    if (output.images?.length) {
+                        for (const img of output.images) {
+                            images.push({ url: `${url}/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder || '')}&type=${img.type || 'output'}` });
+                        }
+                    }
+                }
+                if (images.length) {
+                    log(sessionId, `ComfyUI: Got ${images.length} images`);
+                    return { data: images };
+                }
             }
         }
-        throw new Error('Timeout');
+        throw new Error('Timeout waiting for ComfyUI');
     },
     
     async pollinations(body) {
