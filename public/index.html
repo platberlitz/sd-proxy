@@ -225,22 +225,23 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <label>Negative Prompt</label>
 <textarea id="negative" rows="2">lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, blurry, deformed, ugly, duplicate, morbid, mutilated, mutation, disfigured, malformed limbs, extra limbs, fused fingers, too many fingers, long neck</textarea>
 
+<div id="commonSettings">
 <div class="row-5">
-<div><label>Width</label><input type="number" id="width" value="512" step="64"></div>
-<div><label>Height</label><input type="number" id="height" value="768" step="64"></div>
-<div><label>Steps</label><input type="number" id="steps" value="25"></div>
-<div><label>CFG</label><input type="number" id="cfg" value="7" step="0.5"></div>
-<div><label>Seed</label><input type="number" id="seed" value="-1"></div>
+<div id="widthSetting"><label>Width</label><input type="number" id="width" value="512" step="64"></div>
+<div id="heightSetting"><label>Height</label><input type="number" id="height" value="768" step="64"></div>
+<div id="stepsSetting"><label>Steps</label><input type="number" id="steps" value="25"></div>
+<div id="cfgSetting"><label>CFG</label><input type="number" id="cfg" value="7" step="0.5"></div>
+<div id="seedSetting"><label>Seed</label><input type="number" id="seed" value="-1"></div>
 </div>
 
-<div class="row-4">
-<div><label>Sampler</label><select id="sampler">
+<div class="row-4" id="samplerRow">
+<div id="samplerSetting"><label>Sampler</label><select id="sampler">
 <option value="euler_ancestral">Euler a</option><option value="euler">Euler</option><option value="dpmpp_2m" selected>DPM++ 2M</option><option value="dpmpp_2m_sde">DPM++ 2M SDE</option><option value="dpmpp_2s_ancestral">DPM++ 2S a</option><option value="dpmpp_sde">DPM++ SDE</option><option value="dpm_2">DPM2</option><option value="dpm_2_ancestral">DPM2 a</option><option value="heun">Heun</option><option value="lms">LMS</option><option value="ddim">DDIM</option><option value="ddpm">DDPM</option><option value="uni_pc">UniPC</option><option value="lcm">LCM</option>
 </select></div>
-<div><label>Scheduler</label><select id="scheduler">
+<div id="schedulerSetting"><label>Scheduler</label><select id="scheduler">
 <option value="karras" selected>Karras</option><option value="normal">Normal</option><option value="exponential">Exponential</option>
 </select></div>
-<div><label>Style</label><select id="style">
+<div id="styleSetting"><label>Style</label><select id="style">
 <option value="">None</option><option value="anime, cel shading">Anime</option><option value="photorealistic, 8k uhd">Photorealistic</option>
 <option value="digital painting, artstation">Digital Art</option><option value="oil painting, classical">Oil Painting</option>
 <option value="watercolor, soft edges">Watercolor</option><option value="pencil sketch, graphite">Sketch</option>
@@ -251,21 +252,24 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <option value="cinematic, movie still">Cinematic</option><option value="dark fantasy, grimdark">Dark Fantasy</option>
 <option value="vaporwave, synthwave">Vaporwave</option><option value="noir, high contrast">Film Noir</option>
 </select></div>
-<div><label>Batch</label><input type="number" id="batch" value="1" min="1" max="4"></div>
+<div id="batchSetting"><label>Batch</label><input type="number" id="batch" value="1" min="1" max="4"></div>
 </div>
 
-<div class="row-4 mt">
-<div><label><input type="checkbox" id="hiresFix"> Hires Fix</label></div>
-<div><label><input type="checkbox" id="faceRestore"> Face Restore</label></div>
-<div><label><input type="checkbox" id="tiling"> Tiling/Seamless</label></div>
-<div><label>Hires Scale</label><input type="number" id="hiresScale" value="1.5" min="1" max="2" step="0.1"></div>
+<div class="row-4 mt" id="hiresRow">
+<div id="hiresFixSetting"><label><input type="checkbox" id="hiresFix"> Hires Fix</label></div>
+<div id="faceRestoreSetting"><label><input type="checkbox" id="faceRestore"> Face Restore</label></div>
+<div id="tilingSetting"><label><input type="checkbox" id="tiling"> Tiling/Seamless</label></div>
+<div id="hiresScaleSetting"><label>Hires Scale</label><input type="number" id="hiresScale" value="1.5" min="1" max="2" step="0.1"></div>
+</div>
 </div>
 
+<div id="refImagesSection">
 <label class="mt">Reference Images (up to 15)</label>
 <div id="refImagesContainer" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;"></div>
 <input type="file" id="refImagesInput" accept="image/*" multiple style="display:none">
 <button class="btn-sm" onclick="$('refImagesInput').click()">📎 Add Reference Images</button>
 <button class="btn-sm" onclick="clearRefImages()">Clear All</button>
+</div>
 
 <label class="mt">Extra Instructions</label>
 <textarea id="extraInstructions" rows="2" placeholder="Additional instructions for the image model (e.g., style guidance, specific details)..."></textarea>
@@ -621,7 +625,46 @@ function showModal(url,info){currentImage=url;$('modalImg').src=url;$('modalInfo
 function closeModal(){$('modal').classList.remove('show');}
 function prevImage(){if(currentIndex>0){currentIndex--;showModal(allImages[currentIndex]);}}
 function nextImage(){if(currentIndex<allImages.length-1){currentIndex++;showModal(allImages[currentIndex]);}}
-function onBackendChange(){const b=$('backend').value;$('customEndpoint').style.display=b==='custom'?'block':'none';$('pixaiSettings').style.display=b==='pixai'?'block':'none';$('novelaiSettings').style.display=b==='novelai'?'block':'none';$('naisteraSettings').style.display=b==='naistera'?'block':'none';$('geminiSettings').style.display=b==='gemini'?'block':'none';fetchBackendModels();}
+function onBackendChange(){
+    const b=$('backend').value;
+    // Backend-specific settings panels
+    $('customEndpoint').style.display=b==='custom'?'block':'none';
+    $('pixaiSettings').style.display=b==='pixai'?'block':'none';
+    $('novelaiSettings').style.display=b==='novelai'?'block':'none';
+    $('naisteraSettings').style.display=b==='naistera'?'block':'none';
+    $('geminiSettings').style.display=b==='gemini'?'block':'none';
+    
+    // Define what each backend supports
+    const supports={
+        local:{width:1,height:1,steps:1,cfg:1,seed:1,sampler:1,scheduler:1,style:1,batch:1,hires:1,negative:1,refImages:0},
+        comfyui:{width:1,height:1,steps:1,cfg:1,seed:1,sampler:1,scheduler:1,style:1,batch:1,hires:0,negative:1,refImages:0},
+        pollinations:{width:1,height:1,steps:0,cfg:0,seed:1,sampler:0,scheduler:0,style:1,batch:0,hires:0,negative:0,refImages:0},
+        nanogpt:{width:0,height:0,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:0,refImages:0},
+        gemini:{width:0,height:0,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:0,hires:0,negative:0,refImages:1},
+        novelai:{width:1,height:1,steps:0,cfg:0,seed:1,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
+        naistera:{width:0,height:0,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:0,hires:0,negative:0,refImages:0},
+        pixai:{width:1,height:1,steps:1,cfg:1,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
+        stability:{width:1,height:1,steps:1,cfg:1,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
+        replicate:{width:1,height:1,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
+        fal:{width:1,height:1,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:0,refImages:0},
+        together:{width:1,height:1,steps:1,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
+        custom:{width:1,height:1,steps:1,cfg:1,seed:1,sampler:1,scheduler:1,style:1,batch:1,hires:1,negative:1,refImages:1}
+    };
+    const s=supports[b]||supports.custom;
+    $('widthSetting').style.display=s.width?'':'none';
+    $('heightSetting').style.display=s.height?'':'none';
+    $('stepsSetting').style.display=s.steps?'':'none';
+    $('cfgSetting').style.display=s.cfg?'':'none';
+    $('seedSetting').style.display=s.seed?'':'none';
+    $('samplerSetting').style.display=s.sampler?'':'none';
+    $('schedulerSetting').style.display=s.scheduler?'':'none';
+    $('styleSetting').style.display=s.style?'':'none';
+    $('batchSetting').style.display=s.batch?'':'none';
+    $('hiresRow').style.display=s.hires?'':'none';
+    $('refImagesSection').style.display=s.refImages?'':'none';
+    $('negative').parentElement.style.display=s.negative?'':'none';
+    fetchBackendModels();
+}
 function randomSeed(){$('seed').value=Math.floor(Math.random()*2147483647);}
 function toggleTheme(){document.body.classList.toggle('light-theme');}
 
