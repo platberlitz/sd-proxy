@@ -2,6 +2,7 @@ const express = require('express');
 const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const app = express();
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
@@ -23,8 +24,8 @@ let templates = loadData('templates', []);
 let costs = loadData('costs', { total: 0, byBackend: {} });
 let currentGeneration = null; // For progress tracking
 
-// SSE clients for progress updates
-let progressClients = [];
+// SSE clients with session isolation
+let sseClients = new Map(); // sessionId -> { progress: res, logs: res }
 
 // CORS
 app.use((req, res, next) => {
@@ -38,33 +39,44 @@ app.use((req, res, next) => {
 // Serve dashboard
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-// Progress SSE endpoint
-app.get('/api/progress', (req, res) => {
+// Session endpoint - get unique session ID
+app.get('/api/session', (req, res) => {
+    const sessionId = crypto.randomUUID();
+    res.json({ sessionId });
+});
+
+// Progress SSE endpoint (session-isolated)
+app.get('/api/progress/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    progressClients.push(res);
-    req.on('close', () => { progressClients = progressClients.filter(c => c !== res); });
+    if (!sseClients.has(sessionId)) sseClients.set(sessionId, {});
+    sseClients.get(sessionId).progress = res;
+    req.on('close', () => { if (sseClients.has(sessionId)) { delete sseClients.get(sessionId).progress; if (!Object.keys(sseClients.get(sessionId)).length) sseClients.delete(sessionId); } });
 });
 
-function sendProgress(data) {
-    progressClients.forEach(c => c.write(`data: ${JSON.stringify(data)}\n\n`));
+// Logs SSE endpoint (session-isolated)
+app.get('/api/logs/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    if (!sseClients.has(sessionId)) sseClients.set(sessionId, {});
+    sseClients.get(sessionId).logs = res;
+    req.on('close', () => { if (sseClients.has(sessionId)) { delete sseClients.get(sessionId).logs; if (!Object.keys(sseClients.get(sessionId)).length) sseClients.delete(sessionId); } });
+});
+
+function sendProgress(sessionId, data) {
+    const client = sseClients.get(sessionId);
+    if (client?.progress) client.progress.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-// Logs SSE endpoint
-let logClients = [];
-app.get('/api/logs', (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    logClients.push(res);
-    req.on('close', () => { logClients = logClients.filter(c => c !== res); });
-});
-
-function log(message, level = 'info') {
+function log(sessionId, message, level = 'info') {
     const entry = `[${new Date().toISOString()}] [${level.toUpperCase()}] ${message}`;
     console.log(entry);
-    logClients.forEach(c => c.write(`data: ${JSON.stringify({ message, level })}\n\n`));
+    const client = sseClients.get(sessionId);
+    if (client?.logs) client.logs.write(`data: ${JSON.stringify({ message, level })}\n\n`);
 }
 
 // Prompt matrix expansion: [a|b] [c|d] -> 4 prompts
@@ -90,7 +102,7 @@ function expandWildcards(text) {
 
 // Backend handlers
 const backends = {
-    async local(body, headers) {
+    async local(body, headers, sessionId) {
         const url = headers['x-local-url'] || 'http://127.0.0.1:7860';
         const samplerMap = { euler_ancestral: 'Euler a', euler: 'Euler', dpmpp_2m: 'DPM++ 2M', dpmpp_sde: 'DPM++ SDE', ddim: 'DDIM', uni_pc: 'UniPC' };
         
@@ -183,7 +195,7 @@ const backends = {
             try {
                 const progRes = await fetch(`${url}/sdapi/v1/progress`);
                 const prog = await progRes.json();
-                sendProgress({ type: 'generation', progress: prog.progress, eta: prog.eta_relative, preview: prog.current_image });
+                sendProgress(sessionId, { type: 'generation', progress: prog.progress, eta: prog.eta_relative, preview: prog.current_image });
             } catch {}
         }, 1000);
         
@@ -197,11 +209,11 @@ const backends = {
         } finally {
             clearInterval(progressInterval);
             currentGeneration = null;
-            sendProgress({ type: 'generation', progress: 1, done: true });
+            sendProgress(sessionId, { type: 'generation', progress: 1, done: true });
         }
     },
     
-    async comfyui(body, headers) {
+    async comfyui(body, headers, sessionId) {
         const url = headers['x-local-url'] || 'http://127.0.0.1:8188';
         const seed = body.seed > 0 ? body.seed : Math.floor(Math.random() * 999999999);
         
@@ -339,7 +351,7 @@ const backends = {
         return await res.json();
     },
     
-    async custom(body, headers) {
+    async custom(body, headers, sessionId) {
         let customUrl = headers['x-custom-url'];
         if (!customUrl) throw new Error('Custom URL required');
         if (!customUrl.includes('/images/generations') && !customUrl.includes('/chat/completions')) customUrl = customUrl.replace(/\/$/, '') + '/chat/completions';
@@ -350,22 +362,22 @@ const backends = {
         // Build message content with reference images
         const content = [];
         if (body.reference_images?.length) {
-            log(`Adding ${body.reference_images.length} reference images to request`);
+            log(sessionId, `Adding ${body.reference_images.length} reference images to request`);
             for (const img of body.reference_images) {
                 content.push({ type: 'image_url', image_url: { url: img } });
             }
         }
         content.push({ type: 'text', text: body.prompt });
         
-        log(`Custom backend request to: ${customUrl}`);
+        log(sessionId, `Custom backend request to: ${customUrl}`);
         const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify({ model: body.model || 'gpt-4o', messages: [{ role: 'user', content }] }) });
         const data = await res.json();
-        log(`Custom backend response status: ${res.status}`);
+        log(sessionId, `Custom backend response status: ${res.status}`);
         const msg = data.choices?.[0]?.message || {};
-        if (msg.images?.length) { log(`Found ${msg.images.length} images in response`); return { data: msg.images.map(img => ({ url: img.image_url?.url || img.url })) }; }
+        if (msg.images?.length) { log(sessionId, `Found ${msg.images.length} images in response`); return { data: msg.images.map(img => ({ url: img.image_url?.url || img.url })) }; }
         const msgContent = msg.content || '';
         const urls = msgContent.match(/https?:\/\/[^\s\)]+\.(png|jpg|jpeg|webp|gif)/gi) || [];
-        if (urls.length) { log(`Found ${urls.length} image URLs in content`); return { data: urls.map(url => ({ url })) }; }
+        if (urls.length) { log(sessionId, `Found ${urls.length} image URLs in content`); return { data: urls.map(url => ({ url })) }; }
         throw new Error(msgContent || JSON.stringify(data));
     }
 };
@@ -559,17 +571,18 @@ app.delete('/api/templates/:id', (req, res) => { templates = templates.filter(t 
 
 // Main generation endpoint
 app.post('/v1/images/generations', async (req, res) => {
+    const sessionId = req.headers['x-session-id'];
     try {
         const backend = req.headers['x-backend'] || 'local';
-        log(`Generation request: backend=${backend}, model=${req.body.model || 'default'}`);
-        log(`Prompt: ${(req.body.prompt || '').substring(0, 100)}...`);
-        if (req.body.reference_images?.length) log(`Reference images: ${req.body.reference_images.length}`);
+        log(sessionId, `Generation request: backend=${backend}, model=${req.body.model || 'default'}`);
+        log(sessionId, `Prompt: ${(req.body.prompt || '').substring(0, 100)}...`);
+        if (req.body.reference_images?.length) log(sessionId, `Reference images: ${req.body.reference_images.length}`);
         
         const handler = backends[backend];
         if (!handler) throw new Error('Unknown backend: ' + backend);
-        const result = await handler(req.body, req.headers);
+        const result = await handler(req.body, req.headers, sessionId);
         
-        log(`Generation complete: ${result.data?.length || 0} images`);
+        log(sessionId, `Generation complete: ${result.data?.length || 0} images`);
         
         // Track costs
         const cost = req.body.cost || 0;
@@ -588,7 +601,7 @@ app.post('/v1/images/generations', async (req, res) => {
         }
         
         res.json(result);
-    } catch (e) { log(`Generation error: ${e.message}`, 'error'); res.status(500).json({ error: e.message }); }
+    } catch (e) { log(sessionId, `Generation error: ${e.message}`, 'error'); res.status(500).json({ error: e.message }); }
 });
 
 // Queue endpoints
