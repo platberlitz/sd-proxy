@@ -337,6 +337,47 @@ const backends = {
         return { data: images };
     },
     
+    async gemini(body, headers, sessionId) {
+        const apiKey = headers.authorization?.replace('Bearer ', '');
+        if (!apiKey) throw new Error('Gemini requires API key');
+        
+        const opts = body.gemini || {};
+        const model = opts.model || 'gemini-2.5-flash-image';
+        
+        log(sessionId, `Gemini request: model=${model}, prompt=${(body.prompt || '').substring(0, 50)}...`);
+        
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: body.prompt }] }],
+                generationConfig: {
+                    responseModalities: ['TEXT', 'IMAGE'],
+                    ...(opts.aspect_ratio && { aspectRatio: opts.aspect_ratio })
+                }
+            })
+        });
+        
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`Gemini error ${res.status}: ${errText}`);
+        }
+        
+        const data = await res.json();
+        const images = [];
+        
+        for (const candidate of data.candidates || []) {
+            for (const part of candidate.content?.parts || []) {
+                if (part.inlineData?.data) {
+                    images.push({ b64_json: part.inlineData.data });
+                }
+            }
+        }
+        
+        log(sessionId, `Gemini returned ${images.length} image(s)`);
+        return { data: images };
+    },
+    
     async naistera(body, headers, sessionId) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('Naistera requires API token');
