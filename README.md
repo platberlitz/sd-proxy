@@ -57,8 +57,9 @@ The UI is organized into two rows of tabs:
 | **Outpaint** | Extend images beyond their borders. Choose direction (left/right/up/down) and pixel amount. |
 | **Upscale** | Upscale images 2x or 4x using ESRGAN, R-ESRGAN, or Anime6B upscalers. |
 | **ControlNet** | Guided generation using control images. Supports Canny, Depth, OpenPose, Lineart, Scribble, Tile preprocessors. |
-| **Tools** | Auto-caption (BLIP/CLIP), image comparison slider, X/Y/Z plot generation, batch from file. |
-| **Models** | Switch A1111 models/VAEs, browse LoRAs, download from Civitai. |
+| **LoRAs** | Browse and search LoRAs from A1111. Click to insert into prompt with weight. |
+| **Tools** | Auto-caption, image comparison, X/Y/Z plot, batch generation, prompt interpolation, regional prompting helper. |
+| **Models** | Switch A1111 models/VAEs, download from Civitai. |
 
 ---
 
@@ -94,14 +95,21 @@ Each backend only shows settings it actually supports:
 - Samplers: Euler Ancestral, Euler, DPM++ variants, DDIM
 - SMEA/SMEA DYN, CFG Rescale, Decrisper, Quality Tags, Variety+
 - UC Presets: Low Quality + Bad Anatomy, Heavy, Light, None
+- **Artist/Style Tags**: 70+ artists, 50+ styles with search and 🎲 randomizer
+- **Anlas Cost Estimator**: Shows estimated cost before generating
 
 **Naistera**
 - Aspect Ratio: 1:1, 16:9, 9:16, 3:2, 2:3
 - Presets: Digital Art, Realism
+- **Artist/Style Tags**: Same searchable tags as NovelAI
 
 **PixAI**
 - Model ID: Get from PixAI URL (pixai.art/model/**MODEL_ID**)
 - LoRAs: Comma-separated id:weight pairs (e.g., `123456:0.8, 789012:0.6`)
+- **Model/LoRA Library**: Save and manage frequently used models and LoRAs
+
+**ComfyUI**
+- **Workflow Library**: Save and load multiple workflows by name
 
 ---
 
@@ -129,18 +137,50 @@ If your URL doesn't end with either endpoint, `/chat/completions` is appended au
 ## Features
 
 ### Generation Features
+- **Size Presets** - Quick selection of common resolutions (SD 1.5 and SDXL)
 - **Reference Images** - Upload up to 15 images for guided generation (Gemini, Custom)
-- **Extra Instructions** - Additional text for the model
+- **Extra Instructions** - Additional text for the model (Gemini, Custom)
 - **40+ Style Presets** - Anime, Photorealistic, Cyberpunk, Ghibli, etc.
 - **Wildcards** - `{red|blue|green} hair` for random selection
 - **Prompt Matrix** - `[a|b] [c|d]` generates all 4 combinations
 - **Prompt Autocomplete** - 150+ Danbooru tags with Tab completion
+- **Generation Timer** - Shows elapsed time for each generation
+- **Seed Increment** - Quick +1 button for seed variations
+
+### Prompt Tools
+- **Prompt History** - Recall last 50 prompts with one click
+- **Negative Presets** - Quick presets for Quality/Anatomy/Style/Artifacts/NSFW issues
+- **Prompt Interpolation** - Blend between two prompts with adjustable steps
+- **Regional Prompting Helper** - Build A1111 Regional Prompter syntax easily
+
+### Comparison & Testing
+- **A/B Testing** - Compare two different prompts side-by-side
+- **Multi-Backend Comparison** - Generate same prompt across multiple backends
+- **X/Y/Z Plot** - Grid comparison of different settings
 
 ### Prompt AI
 - **Providers**: DeepSeek, OpenRouter, OpenAI, or custom endpoint
 - **Dynamic Models**: Fetches available models from `/v1/models`
 - **Styles**: Danbooru tags (anime) or natural descriptions (realistic)
 - **One-Click**: Transfer generated prompt directly to Generate tab
+
+### Organization
+- **Favorites with Tags** - Label favorites and filter by tag
+- **Folder Organization** - Organize history into folders
+- **Search History** - Find past generations by prompt text
+- **Copy Prompt** - One-click copy from any history item
+- **Bulk Download** - Download all favorites at once
+
+### Backend-Specific
+- **NovelAI Artist/Style Tags** - 70+ artists, 50+ styles with search and randomizer
+- **NovelAI Anlas Estimator** - See cost before generating
+- **PixAI Model/LoRA Library** - Save and manage models and LoRAs
+- **ComfyUI Workflow Library** - Save and load multiple workflows
+- **LoRA Browser** - Search and insert LoRAs from A1111
+
+### Data Management
+- **Export/Import All** - Backup settings, presets, templates, history, favorites, folders, costs
+- **Batch Prompt Import** - Load prompts from .txt file (one per line)
 
 ### Session Isolation
 Multi-user safe with session-based isolation:
@@ -334,6 +374,32 @@ prompt1 BREAK prompt2    → Regional: different areas
 | `Ctrl + Q` | Add to queue |
 | `←` / `→` | Navigate gallery |
 | `Escape` | Close modal |
+| `Tab` | Autocomplete tag |
+
+---
+
+## UI Buttons Reference
+
+### Generate Tab
+| Button | Action |
+|--------|--------|
+| Generate | Start generation |
+| + Queue | Add current settings to queue |
+| Matrix | Generate all wildcard combinations |
+| A/B Test | Compare two prompts |
+| 🔀 Compare | Compare across backends |
+| 💾 Preset | Save current settings |
+| 🎲 | Random seed |
+| +1 | Increment seed |
+| ✨ Enhance | AI-enhance prompt |
+| 📝 Templates | Show saved templates |
+| 📜 History | Show prompt history |
+
+### Gallery Tab
+| Button | Action |
+|--------|--------|
+| 🏷️ | Add/edit tags on favorite |
+| 📥 Download All | Download all favorites |
 
 ---
 
