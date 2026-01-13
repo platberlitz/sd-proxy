@@ -104,7 +104,22 @@ function expandWildcards(text) {
 const backends = {
     async local(body, headers, sessionId) {
         const url = headers['x-local-url'] || 'http://127.0.0.1:7860';
-        const samplerMap = { euler_ancestral: 'Euler a', euler: 'Euler', dpmpp_2m: 'DPM++ 2M', dpmpp_sde: 'DPM++ SDE', ddim: 'DDIM', uni_pc: 'UniPC' };
+        
+        // A1111 sampler names - scheduler is part of sampler name
+        const getSamplerName = (sampler, scheduler) => {
+            const base = {
+                'euler_ancestral': 'Euler a', 'euler': 'Euler',
+                'dpmpp_2m': 'DPM++ 2M', 'dpmpp_2m_sde': 'DPM++ 2M SDE',
+                'dpmpp_2s_ancestral': 'DPM++ 2S a', 'dpmpp_sde': 'DPM++ SDE',
+                'dpm_2': 'DPM2', 'dpm_2_ancestral': 'DPM2 a',
+                'heun': 'Heun', 'lms': 'LMS', 'ddim': 'DDIM', 'ddpm': 'DDPM',
+                'uni_pc': 'UniPC', 'lcm': 'LCM'
+            }[sampler] || sampler || 'DPM++ 2M';
+            // Append scheduler suffix if not normal
+            if (scheduler === 'karras') return base + ' Karras';
+            if (scheduler === 'exponential') return base + ' Exponential';
+            return base;
+        };
         
         const payload = {
             prompt: expandWildcards(body.prompt),
@@ -113,17 +128,21 @@ const backends = {
             height: body.height || 768,
             steps: body.steps || 25,
             cfg_scale: body.cfg_scale || 7,
-            sampler_name: samplerMap[body.sampler] || body.sampler || 'DPM++ 2M',
-            scheduler: body.scheduler || 'karras',
+            sampler_name: getSamplerName(body.sampler, body.scheduler),
             seed: body.seed ?? -1,
             batch_size: body.n || 1,
             restore_faces: body.face_restore || false,
-            enable_hr: body.hires_fix || false,
-            hr_scale: body.hires_scale || 1.5,
-            hr_upscaler: body.hires_upscaler || 'Latent',
-            denoising_strength: body.denoising_strength || 0.7,
             tiling: body.tiling || false
         };
+        
+        // Hires fix
+        if (body.hires_fix) {
+            payload.enable_hr = true;
+            payload.hr_scale = body.hires_scale || 1.5;
+            payload.hr_upscaler = body.hires_upscaler || 'Latent';
+            payload.denoising_strength = body.denoising_strength || 0.7;
+            payload.hr_second_pass_steps = body.hr_second_pass_steps || 0;
+        }
         
         // ControlNet
         if (body.controlnet) {
