@@ -699,6 +699,8 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <option value="natural">Natural Description (realistic/photo)</option>
 </select>
 
+<label class="mt" style="display:inline-flex;align-items:center;gap:8px"><input type="checkbox" id="llmNaistera" onchange="saveLLMSettings()"> For Naistera (limit 250 chars)</label>
+
 <label class="mt">Your Request</label>
 <textarea id="llmRequest" rows="3" placeholder="Describe what you want to generate, e.g. 'a girl with red hair in a forest at sunset'"></textarea>
 
@@ -1395,8 +1397,8 @@ async function enhancePrompt(){
 const LLM_ENDPOINTS={deepseek:'https://api.deepseek.com/v1',openrouter:'https://openrouter.ai/api/v1',openai:'https://api.openai.com/v1'};
 let llmSettings=JSON.parse(localStorage.getItem('sdproxy_llm')||'{}');
 
-function loadLLMSettings(){if(llmSettings.provider)$('llmProvider').value=llmSettings.provider;if(llmSettings.apiKey)$('llmApiKey').value=llmSettings.apiKey;if(llmSettings.customUrl)$('llmCustomEndpoint').value=llmSettings.customUrl;if(llmSettings.style)$('llmPromptStyle').value=llmSettings.style;if(llmSettings.modelManual)$('llmModelManual').value=llmSettings.modelManual;onLLMProviderChange();if(llmSettings.model)$('llmModel').value=llmSettings.model;}
-function saveLLMSettings(){llmSettings={provider:$('llmProvider').value,apiKey:$('llmApiKey').value,model:$('llmModel').value,modelManual:$('llmModelManual').value,customUrl:$('llmCustomEndpoint').value,style:$('llmPromptStyle').value};localStorage.setItem('sdproxy_llm',JSON.stringify(llmSettings));}
+function loadLLMSettings(){if(llmSettings.provider)$('llmProvider').value=llmSettings.provider;if(llmSettings.apiKey)$('llmApiKey').value=llmSettings.apiKey;if(llmSettings.customUrl)$('llmCustomEndpoint').value=llmSettings.customUrl;if(llmSettings.style)$('llmPromptStyle').value=llmSettings.style;if(llmSettings.modelManual)$('llmModelManual').value=llmSettings.modelManual;if(llmSettings.naistera)$('llmNaistera').checked=llmSettings.naistera;onLLMProviderChange();if(llmSettings.model)$('llmModel').value=llmSettings.model;}
+function saveLLMSettings(){llmSettings={provider:$('llmProvider').value,apiKey:$('llmApiKey').value,model:$('llmModel').value,modelManual:$('llmModelManual').value,customUrl:$('llmCustomEndpoint').value,style:$('llmPromptStyle').value,naistera:$('llmNaistera').checked};localStorage.setItem('sdproxy_llm',JSON.stringify(llmSettings));}
 function onLLMProviderChange(){const p=$('llmProvider').value;$('llmCustomUrl').style.display=p==='custom'?'block':'none';fetchLLMModels();saveLLMSettings();}
 
 async function fetchLLMModels(){
@@ -1439,7 +1441,7 @@ async function generateLLMPrompt(){
     const endpoint=baseUrl+'/chat/completions';
     if(!baseUrl)return alert('Invalid endpoint');
     
-    const sysPrompt=style==='tags'?'You are an expert at creating Danbooru-style image generation prompts. Convert user requests into comma-separated tags. Include character details, pose, expression, clothing, setting, lighting, and quality tags. KEEP UNDER 250 CHARACTERS. Output ONLY the tags, no explanation.':'You are an expert at creating natural language image generation prompts. Convert user requests into detailed descriptive paragraphs suitable for photorealistic image generation. Include subject, setting, lighting, mood, camera angle. KEEP UNDER 250 CHARACTERS. Output ONLY the description, no explanation.';
+    const sysPrompt=style==='tags'?'You are an expert at creating Danbooru-style image generation prompts. Convert user requests into comma-separated tags. Include character details, pose, expression, clothing, setting, lighting, and quality tags.'+($('llmNaistera').checked?' KEEP UNDER 250 CHARACTERS.':'')+' Output ONLY the tags, no explanation.':'You are an expert at creating natural language image generation prompts. Convert user requests into detailed descriptive paragraphs suitable for photorealistic image generation. Include subject, setting, lighting, mood, camera angle.'+($('llmNaistera').checked?' KEEP UNDER 250 CHARACTERS.':'')+' Output ONLY the description, no explanation.';
     
     $('llmOutput').value='Generating...';
     try{
@@ -1449,10 +1451,9 @@ async function generateLLMPrompt(){
         const output=data.choices?.[0]?.message?.content||'';
         let cleaned = output.trim();
         
-        // Enforce character limit
-        if (cleaned.length > 250) {
+        // Enforce character limit only for Naistera
+        if ($('llmNaistera').checked && cleaned.length > 250) {
             cleaned = cleaned.substring(0, 250).trim();
-            // Try to end at a word boundary
             const lastSpace = cleaned.lastIndexOf(' ');
             if (lastSpace > 200) cleaned = cleaned.substring(0, lastSpace);
         }
