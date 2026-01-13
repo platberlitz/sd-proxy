@@ -42,8 +42,18 @@ npm start
 | **Together AI** | Yes | Cost-effective |
 | **Custom** | Optional | Any OpenAI-compatible API |
 
+### 🤖 Prompt AI (NEW)
+
+AI-powered prompt generation using LLMs:
+- **Providers**: DeepSeek, OpenRouter, OpenAI, or any custom endpoint
+- **Dynamic Model List**: Fetches available models from `/v1/models` API
+- **Prompt Styles**: Danbooru tags (anime) or natural descriptions (realistic)
+- **One-Click Transfer**: Send generated prompt directly to image generation
+
 ### 🛠️ Generation Features
 
+- **Reference Images** - Upload up to 15 reference images for guided generation
+- **Extra Instructions** - Additional text instructions for the image model
 - **40+ Style Presets** - Anime, Photorealistic, Cyberpunk, Ghibli, etc.
 - **Wildcards** - `{red|blue|green} hair` for random selection
 - **Prompt Matrix** - `[a|b] [c|d]` generates all 4 combinations
@@ -91,6 +101,14 @@ npm start
 - **Templates** - Reusable prompt snippets
 - **Export/Import** - Backup all data
 
+### 📋 Console (NEW)
+
+Real-time logging with session isolation:
+- **Live Logs** - See generation requests, responses, and errors in real-time
+- **Session Isolation** - Each user only sees their own logs (multi-user safe)
+- **Auto-scroll** - Toggle auto-scroll for log output
+- **Color-coded** - Errors in red, warnings in yellow
+
 ### 🖥️ User Interface
 
 - **Dark Green Theme** - Easy on the eyes
@@ -131,6 +149,7 @@ curl http://localhost:3001/v1/images/generations \
   -H "Content-Type: application/json" \
   -H "X-Backend: local" \
   -H "X-Local-Url: http://127.0.0.1:7860" \
+  -H "X-Session-Id: your-session-id" \
   -d '{
     "prompt": "masterpiece, 1girl, smile",
     "negative_prompt": "lowres, bad anatomy",
@@ -139,7 +158,8 @@ curl http://localhost:3001/v1/images/generations \
     "steps": 25,
     "cfg_scale": 7,
     "sampler": "dpmpp_2m",
-    "scheduler": "karras"
+    "scheduler": "karras",
+    "reference_images": ["data:image/png;base64,..."]
   }'
 ```
 
@@ -150,6 +170,7 @@ curl http://localhost:3001/v1/images/generations \
 | `X-Backend` | Backend to use |
 | `X-Local-Url` | A1111/ComfyUI URL |
 | `X-Custom-Url` | Custom endpoint URL |
+| `X-Session-Id` | Session ID for isolated logs/progress |
 | `Authorization` | `Bearer <key>` |
 
 ### Body Parameters
@@ -166,6 +187,7 @@ curl http://localhost:3001/v1/images/generations \
 | `scheduler` | string | Noise schedule |
 | `seed` | number | Random seed |
 | `n` | number | Batch size |
+| `reference_images` | array | Base64 reference images (up to 15) |
 | `init_image` | string | Base64 for img2img |
 | `mask` | string | Base64 mask for inpainting |
 | `strength` | number | Denoising strength |
@@ -197,6 +219,10 @@ POST /v1/images/generations     Generate images
 POST /v1/chat/completions       Chat-based generation
 GET  /v1/models                 List backends
 
+GET  /api/session               Get new session ID
+GET  /api/progress/:sessionId   SSE progress stream (session-isolated)
+GET  /api/logs/:sessionId       SSE logs stream (session-isolated)
+
 POST /api/upscale               Upscale image
 POST /api/interrogate           Auto-caption (BLIP/CLIP)
 POST /api/interrupt             Stop generation
@@ -227,7 +253,6 @@ GET  /api/folders               List folders
 POST /api/folders               Create folder
 GET  /api/costs                 Cost tracking
 DELETE /api/costs               Reset costs
-GET  /api/progress              SSE progress stream
 ```
 
 ---
