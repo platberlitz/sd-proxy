@@ -620,7 +620,7 @@ const backends = {
         const opts = body.pixai || {};
         const params = {
             prompts: body.prompt,
-            modelId: body.model || opts.modelId || '1648918127446573124',
+            modelId: opts.modelId || '1648918127446573124',
             width: body.width || 768,
             height: body.height || 1280,
             batchSize: Math.min(body.n || 1, 4)
