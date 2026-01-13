@@ -121,7 +121,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <option value="replicate">Replicate</option><option value="fal">Fal.ai</option><option value="together">Together AI</option><option value="custom">Custom</option>
 </select></div>
 <div id="apiKeyRow"><label>API Key</label><div style="display:flex;gap:4px"><input type="password" id="apiKey" placeholder="If required" onkeydown="if(event.key==='Enter')fetchBackendModels()" style="flex:1"><button class="btn-sm" onclick="fetchBackendModels()">Fetch Models</button></div></div>
-<div id="modelRow"><label>Model</label><select id="model"><option value="">Select model</option></select></div>
+<div id="modelRow"><label>Model</label><div id="modelContainer"><select id="model"><option value="">Select model</option></select></div></div>
 </div>
 <div id="customEndpoint" style="display:none" class="mt"><label>Custom URL</label><input id="customUrl" placeholder="https://api.example.com/v1"></div>
 <div id="comfyuiSettings" style="display:none" class="mt card">
@@ -749,20 +749,23 @@ async function fetchBackendModels(){
     const backend=$('backend').value;
     const apiKey=$('apiKey').value;
     const noModelBackends=['local','comfyui','pixai','pollinations'];
-    if(noModelBackends.includes(backend)){$('model').innerHTML='<option value="">N/A</option>';return;}
-    if(!apiKey){$('model').innerHTML='<option value="">Enter API key first</option>';return;}
     
-    $('model').innerHTML='<option value="">Loading...</option>';
+    const setSelect=(html)=>{$('modelContainer').innerHTML=`<select id="model" style="width:100%">${html}</select>`;};
+    const setInput=(placeholder)=>{$('modelContainer').innerHTML=`<input id="model" placeholder="${placeholder}" style="width:100%">`;};
+    
+    if(noModelBackends.includes(backend)){setSelect('<option value="">N/A</option>');return;}
+    if(!apiKey){setSelect('<option value="">Enter API key first</option>');return;}
+    
+    setSelect('<option value="">Loading...</option>');
     
     const endpoints={
         nanogpt:'https://nano-gpt.com/api/v1/models',
-        openrouter:'https://openrouter.ai/api/v1/models',
         together:'https://api.together.xyz/v1/models',
         stability:'https://api.stability.ai/v1/engines/list'
     };
     
     const url=endpoints[backend];
-    if(!url){$('model').innerHTML='<option value="">Select model manually</option>';return;}
+    if(!url){setInput('Enter model name');return;}
     
     try{
         const res=await fetch(url,{headers:{'Authorization':`Bearer ${apiKey}`}});
@@ -776,8 +779,8 @@ async function fetchBackendModels(){
             models=(data.data||[]).map(m=>m.id);
         }
         models.sort();
-        $('model').innerHTML=models.length?models.map(m=>`<option value="${m}">${m}</option>`).join(''):'<option value="">No models found</option>';
-    }catch(e){$('model').innerHTML=`<option value="">Error: ${e.message}</option>`;}
+        setSelect(models.length?models.map(m=>`<option value="${m}">${m}</option>`).join(''):'<option value="">No models found</option>');
+    }catch(e){setInput('Enter model name');}
 }
 
 function saveSettings(){settings={localUrl:$('localUrl').value,comfyUrl:$('comfyUrl').value,qualityTags:$('qualityTags').value};localStorage.setItem('sdproxy_settings',JSON.stringify(settings));}
