@@ -114,7 +114,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div class="row-3">
 <div><label>Backend</label><select id="backend" onchange="onBackendChange()">
 <option value="local">Local A1111</option><option value="comfyui">ComfyUI</option><option value="pollinations">Pollinations (Free)</option>
-<option value="nanogpt">NanoGPT</option><option value="pixai">PixAI</option><option value="stability">Stability AI</option>
+<option value="nanogpt">NanoGPT</option><option value="novelai">NovelAI</option><option value="pixai">PixAI</option><option value="stability">Stability AI</option>
 <option value="replicate">Replicate</option><option value="fal">Fal.ai</option><option value="together">Together AI</option><option value="custom">Custom</option>
 </select></div>
 <div><label>API Key</label><input type="password" id="apiKey" placeholder="If required"></div>
@@ -122,6 +122,58 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 </div>
 <div id="customEndpoint" style="display:none" class="mt"><label>Custom URL</label><input id="customUrl" placeholder="https://api.example.com/v1"></div>
 <div id="pixaiSettings" style="display:none" class="mt"><label>LoRAs (id:weight, comma-separated)</label><input id="pixaiLoras" placeholder="123456:0.8, 789012:0.6"></div>
+
+<div id="novelaiSettings" style="display:none" class="mt card">
+<h3>NovelAI Settings</h3>
+<div class="row-2">
+<div><label>Model</label><select id="naiModel">
+<option value="nai-diffusion-4-5-curated">V4.5 Curated</option>
+<option value="nai-diffusion-4-5-full">V4.5 Full</option>
+<option value="nai-diffusion-4-curated-preview">V4 Curated</option>
+<option value="nai-diffusion-4-full">V4 Full</option>
+<option value="nai-diffusion-3">V3 Anime</option>
+<option value="nai-diffusion-furry-3">V3 Furry</option>
+</select></div>
+<div><label>Sampler</label><select id="naiSampler">
+<option value="k_euler_ancestral">Euler Ancestral</option>
+<option value="k_euler">Euler</option>
+<option value="k_dpmpp_2m">DPM++ 2M</option>
+<option value="k_dpmpp_2m_sde">DPM++ 2M SDE</option>
+<option value="k_dpmpp_2s_ancestral">DPM++ 2S Ancestral</option>
+<option value="k_dpmpp_sde">DPM++ SDE</option>
+<option value="ddim_v3">DDIM</option>
+</select></div>
+</div>
+<div class="row-3 mt">
+<div><label>Steps</label><input type="number" id="naiSteps" value="28" min="1" max="50"></div>
+<div><label>Guidance (CFG)</label><input type="number" id="naiScale" value="5" min="0" max="10" step="0.1"></div>
+<div><label>CFG Rescale</label><input type="number" id="naiRescale" value="0" min="0" max="1" step="0.02"></div>
+</div>
+<div class="row-3 mt">
+<div><label>Noise Schedule</label><select id="naiSchedule">
+<option value="native">Native</option>
+<option value="karras">Karras</option>
+<option value="exponential">Exponential</option>
+<option value="polyexponential">Polyexponential</option>
+</select></div>
+<div><label>UC Preset</label><select id="naiUcPreset">
+<option value="0">Low Quality + Bad Anatomy</option>
+<option value="1">Low Quality</option>
+<option value="2">Bad Anatomy</option>
+<option value="4">Heavy</option>
+<option value="5">Light</option>
+<option value="3">None</option>
+</select></div>
+<div><label>Uncond Scale</label><input type="number" id="naiUncondScale" value="1" min="0" max="1.5" step="0.05"></div>
+</div>
+<div class="row-4 mt">
+<div><label><input type="checkbox" id="naiSmea"> SMEA</label></div>
+<div><label><input type="checkbox" id="naiSmeaDyn"> SMEA DYN</label></div>
+<div><label><input type="checkbox" id="naiDecrisper"> Decrisper</label></div>
+<div><label><input type="checkbox" id="naiQuality" checked> Quality Tags</label></div>
+</div>
+<div><label><input type="checkbox" id="naiVariety"> Variety+</label></div>
+</div>
 
 <label>Prompt <span class="flex" style="float:right;gap:4px">
 <button class="btn-sm" onclick="enhancePrompt()">✨ Enhance</button>
@@ -533,7 +585,7 @@ function showModal(url,info){currentImage=url;$('modalImg').src=url;$('modalInfo
 function closeModal(){$('modal').classList.remove('show');}
 function prevImage(){if(currentIndex>0){currentIndex--;showModal(allImages[currentIndex]);}}
 function nextImage(){if(currentIndex<allImages.length-1){currentIndex++;showModal(allImages[currentIndex]);}}
-function onBackendChange(){$('customEndpoint').style.display=$('backend').value==='custom'?'block':'none';$('pixaiSettings').style.display=$('backend').value==='pixai'?'block':'none';}
+function onBackendChange(){const b=$('backend').value;$('customEndpoint').style.display=b==='custom'?'block':'none';$('pixaiSettings').style.display=b==='pixai'?'block':'none';$('novelaiSettings').style.display=b==='novelai'?'block':'none';}
 function randomSeed(){$('seed').value=Math.floor(Math.random()*2147483647);}
 function toggleTheme(){document.body.classList.toggle('light-theme');}
 
@@ -590,6 +642,7 @@ async function generate(){
             hires_fix:$('hiresFix').checked,hires_scale:+$('hiresScale').value,face_restore:$('faceRestore').checked,tiling:$('tiling').checked};
         if(refImages.length)body.reference_images=refImages;
         if($('backend').value==='pixai'&&$('pixaiLoras').value){body.loras=$('pixaiLoras').value.split(',').map(l=>{const[id,w]=l.trim().split(':');return{id:id.trim(),weight:parseFloat(w)||0.8};}).filter(l=>l.id);}
+        if($('backend').value==='novelai'){body.nai={model:$('naiModel').value,sampler:$('naiSampler').value,steps:+$('naiSteps').value,scale:+$('naiScale').value,cfg_rescale:+$('naiRescale').value,noise_schedule:$('naiSchedule').value,uc_preset:+$('naiUcPreset').value,uncond_scale:+$('naiUncondScale').value,smea:$('naiSmea').checked,smea_dyn:$('naiSmeaDyn').checked,decrisper:$('naiDecrisper').checked,quality_toggle:$('naiQuality').checked,variety_plus:$('naiVariety').checked};}
         if(body.seed<0)delete body.seed;
         const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify(body)});
         const data=await res.json();
