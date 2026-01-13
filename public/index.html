@@ -170,6 +170,15 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div><label>Hires Scale</label><input type="number" id="hiresScale" value="1.5" min="1" max="2" step="0.1"></div>
 </div>
 
+<label class="mt">Reference Images (up to 15)</label>
+<div id="refImagesContainer" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;"></div>
+<input type="file" id="refImagesInput" accept="image/*" multiple style="display:none">
+<button class="btn-sm" onclick="$('refImagesInput').click()">📎 Add Reference Images</button>
+<button class="btn-sm" onclick="clearRefImages()">Clear All</button>
+
+<label class="mt">Extra Instructions</label>
+<textarea id="extraInstructions" rows="2" placeholder="Additional instructions for the image model (e.g., style guidance, specific details)..."></textarea>
+
 <div class="flex mt">
 <button onclick="generate()" id="genBtn" class="btn-primary">Generate (Ctrl+Enter)</button>
 <button onclick="interruptGen()" id="interruptBtn" style="display:none" class="btn-danger">⏹ Stop</button>
@@ -462,6 +471,7 @@ const $=id=>document.getElementById(id);
 let settings=JSON.parse(localStorage.getItem('sdproxy_settings')||'{}');
 let currentImage=null,currentIndex=0,allImages=[],brushSize=30,inpaintImg=null,maskCanvas=null,maskCtx=null,drawing=false;
 let img2imgData=null,outpaintData=null,upscaleData=null,controlnetData=null,controlnetProcessed=null;
+let refImages=[];
 
 // Extended Danbooru tags
 const TAGS=['1girl','1boy','solo','long_hair','short_hair','blonde_hair','brown_hair','black_hair','white_hair','red_hair','blue_hair','pink_hair','purple_hair','green_hair','multicolored_hair','blue_eyes','red_eyes','green_eyes','brown_eyes','yellow_eyes','purple_eyes','heterochromia','smile','open_mouth','closed_eyes','looking_at_viewer','looking_away','from_behind','from_side','standing','sitting','lying','walking','running','jumping','kneeling','outdoors','indoors','sky','cloud','sun','moon','night','day','sunset','sunrise','rain','snow','wind','water','fire','lightning','forest','mountain','beach','ocean','city','street','room','bedroom','bathroom','kitchen','school','classroom','office','castle','ruins','fantasy','sci-fi','cyberpunk','steampunk','medieval','modern','futuristic','simple_background','white_background','black_background','gradient_background','detailed_background','blurry_background','full_body','upper_body','portrait','cowboy_shot','close-up','wide_shot','dutch_angle','from_above','from_below','pov','dress','shirt','skirt','pants','shorts','jacket','coat','sweater','hoodie','uniform','school_uniform','maid','armor','bikini','swimsuit','underwear','nude','weapon','sword','gun','magic','wings','tail','horns','ears','animal_ears','cat_ears','dog_ears','fox_ears','rabbit_ears','halo','crown','hat','glasses','mask','jewelry','necklace','earrings','bracelet','ring','flower','ribbon','bow','lace','frills','high_heels','boots','barefoot','thighhighs','stockings','pantyhose','gloves','cape','scarf'];
@@ -506,10 +516,12 @@ async function generate(){
     const btn=$('genBtn');btn.disabled=true;$('interruptBtn').style.display='inline';$('status').textContent='⏳ Generating...';
     try{
         const style=$('style').value;
-        const body={prompt:expandWildcards($('prompt').value)+(style?', '+style:''),negative_prompt:$('negative').value,
+        const extra=$('extraInstructions').value;
+        const body={prompt:expandWildcards($('prompt').value)+(style?', '+style:'')+(extra?'\n'+extra:''),negative_prompt:$('negative').value,
             width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,
             sampler:$('sampler').value,scheduler:$('scheduler').value,seed:+$('seed').value,n:+$('batch').value,model:$('model').value,
             hires_fix:$('hiresFix').checked,hires_scale:+$('hiresScale').value,face_restore:$('faceRestore').checked,tiling:$('tiling').checked};
+        if(refImages.length)body.reference_images=refImages;
         if(body.seed<0)delete body.seed;
         const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify(body)});
         const data=await res.json();
@@ -526,6 +538,12 @@ async function generate(){
 }
 
 async function interruptGen(){await fetch('/api/interrupt',{method:'POST',headers:getHeaders()});$('status').textContent='⏹ Interrupted';}
+
+// Reference images
+function renderRefImages(){$('refImagesContainer').innerHTML=refImages.map((src,i)=>`<div style="position:relative;"><img src="${src}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;"><button onclick="removeRefImage(${i})" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;border:none;background:var(--danger);color:#fff;font-size:10px;cursor:pointer;">×</button></div>`).join('');}
+function removeRefImage(i){refImages.splice(i,1);renderRefImages();}
+function clearRefImages(){refImages=[];renderRefImages();}
+$('refImagesInput').onchange=function(){const files=Array.from(this.files);const remaining=15-refImages.length;files.slice(0,remaining).forEach(f=>{const r=new FileReader();r.onload=e=>{refImages.push(e.target.result);renderRefImages();};r.readAsDataURL(f);});this.value='';};
 
 async function generateMatrix(){
     const prompts=expandMatrix($('prompt').value);
