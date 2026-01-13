@@ -330,7 +330,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div id="naisteraSettings" style="display:none" class="mt card">
 <h3 class="collapsible" onclick="toggleCollapse(this)">🌟 Naistera Settings</h3>
 <div>
-<div class="row-2">
+<div class="row-3">
 <div><label>Aspect Ratio</label><select id="naisteraAspect">
 <option value="1:1">1:1 (Square)</option>
 <option value="16:9">16:9 (Landscape)</option>
@@ -342,6 +342,12 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <option value="">None</option>
 <option value="digital">Digital Art</option>
 <option value="realism">Realism</option>
+</select></div>
+<div><label>Count (Variety)</label><select id="naisteraCount">
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
 </select></div>
 </div>
 <div class="mt"><label>Artist/Style Tags <button class="btn-sm" onclick="randomNaiTags()" style="float:right">🎲 Random</button></label>
@@ -1197,7 +1203,7 @@ async function generate(){
             };
         }
         if($('backend').value==='novelai'){body.nai={model:$('naiModel').value,sampler:$('naiSampler').value,steps:+$('naiSteps').value,scale:+$('naiScale').value,cfg_rescale:+$('naiRescale').value,noise_schedule:$('naiSchedule').value,uc_preset:+$('naiUcPreset').value,uncond_scale:+$('naiUncondScale').value,smea:$('naiSmea').checked,smea_dyn:$('naiSmeaDyn').checked,decrisper:$('naiDecrisper').checked,quality_toggle:$('naiQuality').checked,variety_plus:$('naiVariety').checked};}
-        if($('backend').value==='naistera'){body.naistera={aspect_ratio:$('naisteraAspect').value,preset:$('naisteraPreset').value};}
+        if($('backend').value==='naistera'){body.naistera={aspect_ratio:$('naisteraAspect').value,preset:$('naisteraPreset').value};body.n=+$('naisteraCount').value;}
         if($('backend').value==='gemini'){body.gemini={model:$('geminiModel').value,aspect_ratio:$('geminiAspect').value};}
         if($('backend').value==='comfyui'&&$('comfyWorkflow').value){try{body.workflow=JSON.parse($('comfyWorkflow').value);}catch(e){throw new Error('Invalid workflow JSON');}}
         if(body.seed<0)delete body.seed;
