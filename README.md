@@ -43,6 +43,7 @@ ADMIN_USER="myuser" ADMIN_PASS="mypass" npm start
 | **Gemini (Nano Banana)** | Yes | Google's native image gen, reference images |
 | **NovelAI** | Yes | Anime-focused, SMEA, variety+ |
 | **Naistera** | Yes | Simple API with presets |
+| **CivitAI** | Yes | Community models, LoRAs, ControlNet |
 | **PixAI** | Yes | Anime-focused, LoRA support |
 | **Stability AI** | Yes | Official SDXL |
 | **Replicate** | Yes | Many model options |

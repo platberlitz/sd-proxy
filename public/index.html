@@ -141,7 +141,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div class="row-3">
 <div><label>Backend</label><select id="backend" onchange="onBackendChange();saveSettings()">
 <option value="local">Local A1111</option><option value="comfyui">ComfyUI</option><option value="pollinations">Pollinations (Free)</option>
-<option value="nanogpt">NanoGPT</option><option value="gemini">Gemini (Nano Banana)</option><option value="novelai">NovelAI</option><option value="naistera">Naistera</option><option value="pixai">PixAI</option><option value="stability">Stability AI</option>
+<option value="nanogpt">NanoGPT</option><option value="gemini">Gemini (Nano Banana)</option><option value="novelai">NovelAI</option><option value="naistera">Naistera</option><option value="civitai">CivitAI</option><option value="pixai">PixAI</option><option value="stability">Stability AI</option>
 <option value="replicate">Replicate</option><option value="fal">Fal.ai</option><option value="together">Together AI</option><option value="custom">Custom</option>
 </select></div>
 <div id="apiKeyRow"><label>API Key</label><div style="display:flex;gap:4px"><input type="password" id="apiKey" placeholder="If required" onkeydown="if(event.key==='Enter')fetchBackendModels()" onchange="saveSettings()" style="flex:1"><button class="btn-sm" id="fetchModelsBtn" onclick="fetchBackendModels()">Fetch Models</button></div></div>
@@ -355,6 +355,53 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <input type="text" id="naisteraTagSearch" placeholder="Search artists/styles..." oninput="filterNaiTags('naisteraTagsGrid',this.value)" class="mt">
 <div id="naisteraTagsGrid" class="flex mt" style="gap:4px;flex-wrap:wrap;max-height:150px;overflow-y:auto"></div></div>
 </div></div>
+
+<div id="civitaiSettings" style="display:none" class="mt card">
+<h3 class="collapsible" onclick="toggleCollapse(this)">🏛️ CivitAI Settings</h3>
+<div>
+<div class="row-2">
+<div><label>Model URN</label><input id="civitaiModel" placeholder="urn:air:sd1:checkpoint:civitai:4201@130072"></div>
+<div><label>Scheduler</label><select id="civitaiScheduler">
+<option value="">Default</option>
+<option value="EulerA">Euler A</option>
+<option value="Euler">Euler</option>
+<option value="LMS">LMS</option>
+<option value="Heun">Heun</option>
+<option value="DPM2">DPM2</option>
+<option value="DPM2A">DPM2 A</option>
+<option value="DPM2SA">DPM2 SA</option>
+<option value="DPM2M">DPM2 M</option>
+<option value="DPMSDE">DPM SDE</option>
+<option value="DPMFast">DPM Fast</option>
+<option value="DPMAdaptive">DPM Adaptive</option>
+<option value="LMSKarras">LMS Karras</option>
+<option value="DPM2Karras">DPM2 Karras</option>
+<option value="DPM2AKarras">DPM2A Karras</option>
+<option value="DPM2SAKarras">DPM2SA Karras</option>
+<option value="DPM2MKarras">DPM2M Karras</option>
+<option value="DPMSDEKarras">DPMSDE Karras</option>
+<option value="DDIM">DDIM</option>
+<option value="PLMS">PLMS</option>
+<option value="UniPC">UniPC</option>
+<option value="LCM">LCM</option>
+<option value="DDPM">DDPM</option>
+<option value="DEIS">DEIS</option>
+</select></div>
+</div>
+<div class="row-2 mt">
+<div><label>CLIP Skip</label><input type="number" id="civitaiClipSkip" value="2" min="1" max="12"></div>
+<div><label>Batch Size</label><select id="civitaiBatch">
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="4">4</option>
+</select></div>
+</div>
+<div class="mt"><label>Additional Networks (LoRAs)</label>
+<textarea id="civitaiNetworks" rows="3" placeholder='{"urn:air:sd1:lora:civitai:162141@182559": {"type": "Lora", "strength": 1.0}}'></textarea>
+<div class="form-hint">JSON format: {"urn": {"type": "Lora", "strength": 1.0}}</div>
+</div>
+</div>
+</div>
 
 <div id="geminiSettings" style="display:none" class="mt card">
 <h3>Gemini (Nano Banana) Settings</h3>
@@ -1023,6 +1070,7 @@ function onBackendChange(){
     $('pixaiSettings').style.display=b==='pixai'?'block':'none';
     $('novelaiSettings').style.display=b==='novelai'?'block':'none';
     $('naisteraSettings').style.display=b==='naistera'?'block':'none';
+    $('civitaiSettings').style.display=b==='civitai'?'block':'none';
     $('geminiSettings').style.display=b==='gemini'?'block':'none';
     $('extraInstructionsRow').style.display=['gemini','custom'].includes(b)?'block':'none';
     if(b==='novelai')updateNaiCost();
@@ -1036,7 +1084,7 @@ function onBackendChange(){
         gemini:{width:0,height:0,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:0,hires:0,negative:0,refImages:1},
         novelai:{width:1,height:1,steps:0,cfg:0,seed:1,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
         naistera:{width:0,height:0,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:0,hires:0,negative:0,refImages:0},
-        pixai:{width:1,height:1,steps:1,cfg:1,seed:1,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
+        civitai:{width:1,height:1,steps:1,cfg:1,seed:1,sampler:0,scheduler:1,style:1,batch:1,hires:0,negative:1,refImages:0},
         stability:{width:1,height:1,steps:1,cfg:1,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
         replicate:{width:1,height:1,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
         fal:{width:1,height:1,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:0,refImages:0},
@@ -1206,6 +1254,15 @@ async function generate(){
             };
         }
         if($('backend').value==='novelai'){body.nai={model:$('naiModel').value,sampler:$('naiSampler').value,steps:+$('naiSteps').value,scale:+$('naiScale').value,cfg_rescale:+$('naiRescale').value,noise_schedule:$('naiSchedule').value,uc_preset:+$('naiUcPreset').value,uncond_scale:+$('naiUncondScale').value,smea:$('naiSmea').checked,smea_dyn:$('naiSmeaDyn').checked,decrisper:$('naiDecrisper').checked,quality_toggle:$('naiQuality').checked,variety_plus:$('naiVariety').checked};}
+        if($('backend').value==='civitai'){
+            body.civitai={
+                model:$('civitaiModel').value,
+                scheduler:$('civitaiScheduler').value,
+                clipSkip:parseInt($('civitaiClipSkip').value),
+                additionalNetworks:$('civitaiNetworks').value?JSON.parse($('civitaiNetworks').value):undefined
+            };
+            body.n=parseInt($('civitaiBatch').value);
+        }
         if($('backend').value==='naistera'){body.naistera={aspect_ratio:$('naisteraAspect').value,preset:$('naisteraPreset').value};body.n=+$('naisteraCount').value;}
         if($('backend').value==='gemini'){body.gemini={model:$('geminiModel').value,aspect_ratio:$('geminiAspect').value};}
         if($('backend').value==='comfyui'&&$('comfyWorkflow').value){try{body.workflow=JSON.parse($('comfyWorkflow').value);}catch(e){throw new Error('Invalid workflow JSON');}}

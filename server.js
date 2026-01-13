@@ -532,6 +532,84 @@ const backends = {
         return { data: results };
     },
     
+    async civitai(body, headers, sessionId) {
+        const apiKey = headers.authorization?.replace('Bearer ', '');
+        if (!apiKey) throw new Error('CivitAI requires API token');
+        
+        const opts = body.civitai || {};
+        const input = {
+            model: opts.model || 'urn:air:sd1:checkpoint:civitai:4201@130072',
+            params: {
+                prompt: body.prompt,
+                negativePrompt: body.negative_prompt,
+                scheduler: opts.scheduler || 'EulerA',
+                steps: body.steps || 20,
+                cfgScale: body.cfg_scale || 7,
+                width: body.width || 512,
+                height: body.height || 512,
+                seed: body.seed || -1,
+                clipSkip: opts.clipSkip || 2
+            }
+        };
+        
+        if (opts.additionalNetworks) {
+            input.additionalNetworks = opts.additionalNetworks;
+        }
+        
+        log(sessionId, `CivitAI request: model=${input.model.split(':').pop()}, ${input.params.width}x${input.params.height}`);
+        
+        const res = await fetch('https://api.civitai.com/v1/images/generations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(input)
+        });
+        
+        if (!res.ok) {
+            const error = await res.text();
+            throw new Error(`CivitAI error: ${res.status} - ${error}`);
+        }
+        
+        const data = await res.json();
+        
+        // CivitAI returns job token, need to poll for completion
+        const jobToken = data.token;
+        if (!jobToken) throw new Error('No job token returned');
+        
+        log(sessionId, `CivitAI job started: ${jobToken}`);
+        
+        // Poll for completion
+        for (let i = 0; i < 60; i++) {
+            await new Promise(r => setTimeout(r, 5000)); // 5 second intervals
+            
+            const statusRes = await fetch(`https://api.civitai.com/v1/jobs/${jobToken}`, {
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            });
+            
+            if (!statusRes.ok) continue;
+            
+            const job = await statusRes.json();
+            
+            if (job.status === 'completed' && job.images?.length) {
+                log(sessionId, `CivitAI completed: ${job.images.length} images`);
+                return {
+                    data: job.images.map(img => ({
+                        url: img.url,
+                        b64_json: img.data // if base64
+                    }))
+                };
+            }
+            
+            if (job.status === 'failed') {
+                throw new Error('CivitAI generation failed');
+            }
+        }
+        
+        throw new Error('CivitAI timeout');
+    },
+    
     async pixai(body, headers, sessionId) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('PixAI requires API key');
