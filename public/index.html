@@ -84,6 +84,21 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 .lora-card{background:#1a2e1a;padding:8px;border-radius:4px;cursor:pointer;text-align:center}
 .lora-card:hover{outline:1px solid var(--accent)}
 .lora-card img{width:100%;border-radius:3px;margin-bottom:4px}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--accent);padding:12px 20px;border-radius:6px;z-index:10000;animation:slideIn 0.3s}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.collapsible{cursor:pointer;user-select:none}.collapsible::before{content:'▼';margin-right:6px;font-size:10px;display:inline-block;transition:transform 0.2s}
+.collapsible.collapsed::before{transform:rotate(-90deg)}.collapsible.collapsed+div{display:none!important}
+.sticky-gen{position:sticky;bottom:0;background:var(--card);padding:10px;margin:-12px;margin-top:10px;border-top:1px solid var(--border);z-index:50}
+.badge{background:var(--accent);color:var(--bg);font-size:10px;padding:1px 5px;border-radius:10px;margin-left:4px}
+.aspect-btns button{padding:4px 8px;font-size:18px}
+.token-count{font-size:10px;color:var(--muted);float:right}
+.context-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:4px 0;z-index:10001;min-width:150px}
+.context-menu div{padding:6px 12px;cursor:pointer}.context-menu div:hover{background:#2d5a2d}
+.lightbox{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.98);z-index:9999;display:none;cursor:zoom-out}
+.lightbox.show{display:flex;justify-content:center;align-items:center}
+.lightbox img{max-width:95%;max-height:95%;object-fit:contain;cursor:grab}
+.lightbox img.dragging{cursor:grabbing}
+@media(max-width:768px){.row-6{grid-template-columns:repeat(3,1fr)}.row-4{grid-template-columns:repeat(2,1fr)}.sticky-gen{position:relative}}
 </style>
 </head>
 <body>
@@ -95,9 +110,9 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div class="tabs">
 <button class="tab active" onclick="showTab('generate')">Generate</button>
 <button class="tab" onclick="showTab('promptgen')">Prompt AI</button>
-<button class="tab" onclick="showTab('queue')">Queue <span id="queueCount"></span></button>
-<button class="tab" onclick="showTab('history')">History</button>
-<button class="tab" onclick="showTab('gallery')">Gallery</button>
+<button class="tab" onclick="showTab('queue')">Queue<span id="queueCount" class="badge" style="display:none"></span></button>
+<button class="tab" onclick="showTab('history')">History<span id="historyCount" class="badge" style="display:none"></span></button>
+<button class="tab" onclick="showTab('gallery')">Gallery<span id="galleryCount" class="badge" style="display:none"></span></button>
 <button class="tab" onclick="showTab('console')">Console</button>
 <button class="tab" onclick="showTab('settings')">Settings</button>
 </div>
@@ -344,14 +359,14 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 </div>
 </div>
 
-<label>Prompt <span class="flex" style="float:right;gap:4px">
+<label>Prompt <span class="token-count" id="tokenCount">0 tokens</span><span class="flex" style="float:right;gap:4px">
 <button class="btn-sm" onclick="enhancePrompt()">✨ Enhance</button>
 <button class="btn-sm" onclick="showTemplates()">📝 Templates</button>
 <button class="btn-sm" onclick="showPromptHistory()">📜 History</button>
 <button class="btn-sm" onclick="showWildcardHelp()">? Help</button>
 </span></label>
 <div style="position:relative">
-<textarea id="prompt" placeholder="masterpiece, best quality, " oninput="onPromptInput(this)" onkeydown="onPromptKeydown(event)">masterpiece, best quality, highly detailed, </textarea>
+<textarea id="prompt" placeholder="masterpiece, best quality, " oninput="onPromptInput(this);updateTokenCount()" onkeydown="onPromptKeydown(event)">masterpiece, best quality, highly detailed, </textarea>
 <div id="autocomplete" class="autocomplete" style="display:none"></div>
 </div>
 <div id="promptTags" class="mt"></div>
@@ -384,6 +399,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <option value="896,1152">896×1152 (SDXL 7:9)</option>
 <option value="1152,896">1152×896 (SDXL 9:7)</option>
 </select></div>
+<div class="aspect-btns"><label>Quick</label><button onclick="setAspect('p')" title="Portrait">📱</button><button onclick="setAspect('l')" title="Landscape">🖼️</button><button onclick="setAspect('s')" title="Square">⬜</button></div>
 <div id="widthSetting"><label>Width</label><input type="number" id="width" value="512" step="64" onchange="$('sizePreset').value=''"></div>
 <div id="heightSetting"><label>Height</label><input type="number" id="height" value="768" step="64" onchange="$('sizePreset').value=''"></div>
 <div id="stepsSetting"><label>Steps</label><input type="number" id="steps" value="25"></div>
@@ -433,18 +449,21 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <textarea id="extraInstructions" rows="2" placeholder="Additional instructions for the image model (e.g., style guidance, specific details)..."></textarea>
 </div>
 
-<div class="flex mt">
+<div class="sticky-gen">
+<div class="flex">
 <button onclick="generate()" id="genBtn" class="btn-primary">Generate (Ctrl+Enter)</button>
 <button onclick="interruptGen()" id="interruptBtn" style="display:none" class="btn-danger">⏹ Stop</button>
 <button onclick="addToQueue()">+ Queue</button>
 <button onclick="generateMatrix()">Matrix</button>
-<button onclick="showABTest()">A/B Test</button>
-<button onclick="showBackendCompare()">🔀 Compare</button>
-<button onclick="savePreset()">💾 Preset</button>
+<button onclick="showABTest()">A/B</button>
+<button onclick="showBackendCompare()">🔀</button>
+<button onclick="savePreset()">💾</button>
 <button onclick="randomSeed()">🎲</button>
+<button onclick="generateSimilar()" title="Generate with slight variation">🔄</button>
 </div>
-<div id="status"></div>
+<div id="status" style="margin-top:4px"></div>
 <div id="genTimer" style="font-size:11px;color:var(--muted)"></div>
+</div>
 </div>
 <div id="result" class="img-grid"></div>
 </div>
@@ -845,6 +864,24 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 </div>
 </div>
 
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+<img id="lightboxImg" onclick="event.stopPropagation()" ondblclick="closeLightbox()">
+</div>
+
+<!-- Context Menu -->
+<div class="context-menu" id="contextMenu" style="display:none">
+<div onclick="contextCopy()">📋 Copy Image</div>
+<div onclick="contextSendImg2Img()">🖼️ Send to Img2Img</div>
+<div onclick="contextSendInpaint()">🎨 Send to Inpaint</div>
+<div onclick="contextFavorite()">⭐ Add to Favorites</div>
+<div onclick="contextDownload()">💾 Download</div>
+<div onclick="contextCopyPrompt()">📝 Copy Prompt</div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" style="position:fixed;bottom:20px;right:20px;z-index:10000"></div>
+
 <script>
 const $=id=>document.getElementById(id);
 let settings=JSON.parse(localStorage.getItem('sdproxy_settings')||'{}');
@@ -857,6 +894,45 @@ function applySizePreset(){const v=$('sizePreset').value;if(v){const[w,h]=v.spli
 // NAI artist and style tags (spaces not underscores per NAI docs)
 const NAI_ARTISTS=['wlop','ilya kuvshinov','artgerm','greg rutkowski','sakimichan','krenz cushart','ruan jia','makoto shinkai','range murata','yoshitaka amano','akihiko yoshida','yoji shinkawa','tetsuya nomura','shigenori soejima','sui ishida','takeshi obata','hirohiko araki','eiichiro oda','akira toriyama','kentaro miura','junji ito','alphonse mucha','james jean','loish','guweiz','nixeu','redjuice','huke','fuzichoco','lack','ciloranko','ask (askzy)','mika pikazo','necomi','anmi','ke-ta','kantoku','tony taka','nardack','mocha (cotton)','torino aqua','ogipote','rurudo','yoneyama mai','tiv','saitom','refeia','momoko (momopoco)','asanagi','raita','oyari ashito','carnelian','dmyo','nishieda','shirow masamune','loundraw','pomodorosa','bae.c','cutesexyrobutts','dishwasher1910','ningen mame','novelance','goto-p','wenjun lin','dao trong le','shal.e','tsubasa tsubasa','misoni comi','banishment','personalami','rossdraws','zeronis'];
 const NAI_STYLES=['traditional media','watercolor (medium)','oil painting (medium)','ink (medium)','colored pencil (medium)','pastel (medium)','acrylic paint (medium)','graphite (medium)','marker (medium)','anime screencap','pixel art','3d','sketch','lineart','no lineart','painterly','anime coloring','flat color','colorful','monochrome','greyscale','muted color','pale color','pastel colors','high contrast','sepia','limited palette','spot color','abstract','art nouveau','impressionism','ukiyo-e','realistic','retro artstyle','game cg','official art','oekaki','vector trace','backlighting','bloom','bokeh','chromatic aberration','depth of field','lens flare','motion blur','soft focus','halftone','dithering','year 2024','year 2020','year 2015','year 2010'];
+
+// Toast notifications
+function toast(msg,duration=3000){const t=document.createElement('div');t.className='toast';t.textContent=msg;$('toastContainer').appendChild(t);setTimeout(()=>t.remove(),duration);}
+
+// Token counter (rough estimate)
+function updateTokenCount(){const p=$('prompt').value;const tokens=Math.ceil(p.length/4);$('tokenCount').textContent=tokens+' tokens';}
+
+// Quick aspect ratio
+function setAspect(type){const presets={p:'512,768',l:'768,512',s:'512,512'};$('sizePreset').value=presets[type];applySizePreset();}
+
+// Generate similar (slight variation)
+function generateSimilar(){const p=$('prompt').value;const tags=p.split(',').map(t=>t.trim()).filter(t=>t);if(tags.length>3){const i=Math.floor(Math.random()*(tags.length-2))+1;tags.splice(i,1);}$('prompt').value=tags.join(', ')+', ';generate();}
+
+// Lightbox with zoom
+let lightboxZoom=1,lightboxPan={x:0,y:0};
+function openLightbox(url){$('lightboxImg').src=url;$('lightbox').classList.add('show');lightboxZoom=1;lightboxPan={x:0,y:0};updateLightboxTransform();}
+function closeLightbox(){$('lightbox').classList.remove('show');}
+function updateLightboxTransform(){$('lightboxImg').style.transform=`scale(${lightboxZoom}) translate(${lightboxPan.x}px,${lightboxPan.y}px)`;}
+$('lightbox')?.addEventListener('wheel',e=>{e.preventDefault();lightboxZoom=Math.max(0.5,Math.min(5,lightboxZoom+(e.deltaY>0?-0.2:0.2)));updateLightboxTransform();});
+
+// Context menu
+let contextTarget=null;
+function showContextMenu(e,url,prompt){e.preventDefault();contextTarget={url,prompt};$('contextMenu').style.display='block';$('contextMenu').style.left=e.pageX+'px';$('contextMenu').style.top=e.pageY+'px';}
+document.addEventListener('click',()=>$('contextMenu').style.display='none');
+function contextCopy(){if(contextTarget?.url)navigator.clipboard.writeText(contextTarget.url);toast('Copied!');}
+function contextSendImg2Img(){if(contextTarget?.url){img2imgData=contextTarget.url;$('img2imgPreview').src=contextTarget.url;$('img2imgPreview').style.display='block';showTab('img2img');toast('Sent to Img2Img');}}
+function contextSendInpaint(){if(contextTarget?.url){loadInpaintFromUrl(contextTarget.url);showTab('inpaint');toast('Sent to Inpaint');}}
+function contextFavorite(){if(contextTarget?.url){addFavorite(contextTarget.url);toast('Added to favorites');}}
+function contextDownload(){if(contextTarget?.url){const a=document.createElement('a');a.href=contextTarget.url;a.download='image.png';a.click();}}
+function contextCopyPrompt(){if(contextTarget?.prompt){navigator.clipboard.writeText(contextTarget.prompt);toast('Prompt copied!');}}
+
+// Auto-save drafts
+let draftTimer=null;
+function saveDraft(){localStorage.setItem('sdproxy_draft',JSON.stringify({prompt:$('prompt').value,negative:$('negative').value}));}
+function loadDraft(){const d=JSON.parse(localStorage.getItem('sdproxy_draft')||'{}');if(d.prompt)$('prompt').value=d.prompt;if(d.negative)$('negative').value=d.negative;}
+$('prompt')?.addEventListener('input',()=>{clearTimeout(draftTimer);draftTimer=setTimeout(saveDraft,2000);});
+
+// Collapsible sections
+function toggleCollapse(el){el.classList.toggle('collapsed');}
 
 function initNaiTags(){
 const grids=['naiTagsGrid','naisteraTagsGrid'];
@@ -1110,12 +1186,13 @@ async function generate(){
         if(data.error)throw new Error(data.error);
         if(data.data?.length){
             allImages=data.data.map(d=>d.url||(d.b64_json?.startsWith('data:')?d.b64_json:'data:image/png;base64,'+d.b64_json));
-            $('status').textContent='✅ Done';
-            $('result').innerHTML=allImages.map((u,i)=>`<div class="img-card"><img src="${u}" onclick="showModal('${u}')">
+            $('status').textContent='✅ Done';toast('Generation complete!');
+            const pr=body.prompt.replace(/'/g,"\\'");
+            $('result').innerHTML=allImages.map((u,i)=>`<div class="img-card"><img src="${u}" onclick="showModal('${u}')" ondblclick="openLightbox('${u}')" oncontextmenu="showContextMenu(event,'${u}','${pr.slice(0,200)}')">
                 <div class="info-overlay">${body.prompt.slice(0,50)}...</div>
                 <div class="actions"><button onclick="showModal('${u}')">View</button><button onclick="sendToImg2ImgUrl('${u}')">i2i</button><button onclick="addFavorite('${u}')">⭐</button></div></div>`).join('');
         }
-    }catch(e){$('status').textContent='❌ '+e.message;}
+    }catch(e){$('status').textContent='❌ '+e.message;toast('Error: '+e.message);}
     btn.disabled=false;$('interruptBtn').style.display='none';stopGenTimer();
 }
 
@@ -1338,16 +1415,18 @@ function copyToPromptAndGenerate(){copyToPrompt();generate();}
 
 // Queue
 async function addToQueue(){const body={prompt:$('prompt').value,negative_prompt:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,backend:$('backend').value};
-await fetch('/api/queue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});loadQueue();}
-async function loadQueue(){const res=await fetch('/api/queue');const q=await res.json();$('queueCount').textContent=q.length?`(${q.length})`:'';
+await fetch('/api/queue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});loadQueue();toast('Added to queue');}
+async function loadQueue(){const res=await fetch('/api/queue');const q=await res.json();
+$('queueCount').textContent=q.length||'';$('queueCount').style.display=q.length?'':'none';
 $('queueList').innerHTML=q.map(i=>`<div class="queue-item"><span>${i.prompt?.slice(0,50)}...</span><button class="btn-sm btn-danger" onclick="removeQueue(${i.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">Empty</p>';}
 async function removeQueue(id){await fetch('/api/queue/'+id,{method:'DELETE'});loadQueue();}
-async function processQueue(){$('status').textContent='⏳ Processing...';const res=await fetch('/api/queue/process',{method:'POST',headers:getHeaders()});const r=await res.json();$('status').textContent=`✅ Processed ${r.length} items`;loadQueue();loadHistory();}
+async function processQueue(){$('status').textContent='⏳ Processing...';const res=await fetch('/api/queue/process',{method:'POST',headers:getHeaders()});const r=await res.json();$('status').textContent=`✅ Processed ${r.length} items`;toast(`Processed ${r.length} items`);loadQueue();loadHistory();}
 
 // History
 let currentFolder=null;
 async function loadHistory(){const search=$('historySearch')?.value||'';const res=await fetch(`/api/history?search=${encodeURIComponent(search)}&folder=${currentFolder||''}`);const data=await res.json();
-$('historyGrid').innerHTML=data.items.map(h=>{const url=h.images[0]?.url||'data:image/png;base64,'+h.images[0]?.b64_json;const p=(h.prompt||'').replace(/'/g,"\\'");return`<div class="history-item" onclick="showModal('${url}','${p.slice(0,100)}')" title="${p.slice(0,200)}"><img src="${url}"><button class="btn-sm" style="position:absolute;bottom:2px;right:2px;padding:1px 4px" onclick="event.stopPropagation();navigator.clipboard.writeText('${p}');this.textContent='✓';setTimeout(()=>this.textContent='📋',500)" title="Copy prompt">📋</button></div>`;}).join('')||'<p style="color:var(--muted)">No history</p>';}
+const count=data.items?.length||0;$('historyCount').textContent=count||'';$('historyCount').style.display=count?'':'none';
+$('historyGrid').innerHTML=data.items.map(h=>{const url=h.images[0]?.url||'data:image/png;base64,'+h.images[0]?.b64_json;const p=(h.prompt||'').replace(/'/g,"\\'");return`<div class="history-item" onclick="showModal('${url}','${p.slice(0,100)}')" ondblclick="openLightbox('${url}')" oncontextmenu="showContextMenu(event,'${url}','${p.slice(0,200)}')" title="${p.slice(0,200)}"><img src="${url}"><button class="btn-sm" style="position:absolute;bottom:2px;right:2px;padding:1px 4px" onclick="event.stopPropagation();navigator.clipboard.writeText('${p}');toast('Copied!')" title="Copy prompt">📋</button></div>`;}).join('')||'<p style="color:var(--muted)">No history</p>';}
 async function clearHistory(){if(confirm('Clear all?')){await fetch('/api/history',{method:'DELETE'});loadHistory();}}
 function filterFolder(f){currentFolder=f;document.querySelectorAll('.folder-item').forEach(el=>el.classList.remove('active'));event.target.classList.add('active');loadHistory();}
 async function createFolder(){const name=prompt('Folder name:');if(name){await fetch('/api/folders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});loadFolders();}}
@@ -1358,15 +1437,16 @@ let favoriteTags=JSON.parse(localStorage.getItem('sdproxy_fav_tags')||'{}');
 async function loadFavorites(){const res=await fetch('/api/favorites');const f=await res.json();
 const tagFilter=($('galleryTagFilter')?.value||'').toLowerCase();
 const filtered=tagFilter?f.filter(x=>(favoriteTags[x.id]||[]).some(t=>t.toLowerCase().includes(tagFilter))):f;
+const count=filtered.length;$('galleryCount').textContent=count||'';$('galleryCount').style.display=count?'':'none';
 allImages=filtered.map(x=>x.url);
 const allTags=[...new Set(Object.values(favoriteTags).flat())];
 $('galleryTags').innerHTML=allTags.map(t=>`<span class="tag" onclick="$('galleryTagFilter').value='${t}';loadFavorites()">${t}</span>`).join('');
-$('galleryGrid').innerHTML=filtered.map(x=>{const tags=favoriteTags[x.id]||[];return`<div class="img-card"><img src="${x.url}" onclick="showModal('${x.url}')"><div class="actions"><button onclick="tagFavorite(${x.id})" class="btn-sm">🏷️</button><button onclick="removeFavorite(${x.id})" class="btn-danger btn-sm">×</button></div>${tags.length?`<div style="font-size:10px;color:var(--muted)">${tags.join(', ')}</div>`:''}</div>`;}).join('')||'<p style="color:var(--muted)">No favorites</p>';}
+$('galleryGrid').innerHTML=filtered.map(x=>{const tags=favoriteTags[x.id]||[];return`<div class="img-card"><img src="${x.url}" onclick="showModal('${x.url}')" ondblclick="openLightbox('${x.url}')" oncontextmenu="showContextMenu(event,'${x.url}','')"><div class="actions"><button onclick="tagFavorite(${x.id})" class="btn-sm">🏷️</button><button onclick="removeFavorite(${x.id})" class="btn-danger btn-sm">×</button></div>${tags.length?`<div style="font-size:10px;color:var(--muted)">${tags.join(', ')}</div>`:''}</div>`;}).join('')||'<p style="color:var(--muted)">No favorites</p>';}
 function tagFavorite(id){const current=(favoriteTags[id]||[]).join(', ');const tags=prompt('Tags (comma-separated):',current);if(tags!==null){favoriteTags[id]=tags.split(',').map(t=>t.trim()).filter(t=>t);localStorage.setItem('sdproxy_fav_tags',JSON.stringify(favoriteTags));loadFavorites();}}
-async function addFavorite(url){const res=await fetch('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});loadFavorites();}
+async function addFavorite(url){await fetch('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});loadFavorites();toast('Added to favorites');}
 async function removeFavorite(id){await fetch('/api/favorites/'+id,{method:'DELETE'});loadFavorites();}
-function toggleFavorite(){if(currentImage)addFavorite(currentImage);}
-async function downloadAllFavorites(){if(!allImages.length)return alert('No favorites');for(let i=0;i<allImages.length;i++){const a=document.createElement('a');a.href=allImages[i];a.download=`favorite-${i+1}.png`;a.click();await new Promise(r=>setTimeout(r,200));}}
+function toggleFavorite(){if(currentImage){addFavorite(currentImage);}}
+async function downloadAllFavorites(){if(!allImages.length)return toast('No favorites');toast('Downloading...');for(let i=0;i<allImages.length;i++){const a=document.createElement('a');a.href=allImages[i];a.download=`favorite-${i+1}.png`;a.click();await new Promise(r=>setTimeout(r,200));}toast('Download complete');}
 
 // Presets
 async function loadPresets(){const res=await fetch('/api/presets');const p=await res.json();
@@ -1438,10 +1518,19 @@ lines.forEach(p=>addToQueueWithPrompt(p));$('batchPromptsStatus').textContent=`A
 function addToQueueWithPrompt(p){const item={prompt:p,negative:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg:+$('cfg').value,seed:-1,n:1};
 let q=JSON.parse(localStorage.getItem('sdproxy_queue')||'[]');q.push(item);localStorage.setItem('sdproxy_queue',JSON.stringify(q));loadQueue();}
 
-function showWildcardHelp(){alert('Wildcards: {a|b|c} = random pick\\nMatrix: [a|b] [c|d] = generates all 4 combinations\\nWeights: (tag:1.2) = increase weight\\nLoRA: <lora:name:0.7>');}
+function showWildcardHelp(){toast('Wildcards: {a|b|c} = random pick | Matrix: [a|b] [c|d] = all combos | Weights: (tag:1.2) | LoRA: <lora:name:0.7>');}
 
 // Keyboard & Drag-drop
-document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();generate();}if(e.ctrlKey&&e.key==='s'){e.preventDefault();savePreset();}if(e.ctrlKey&&e.key==='q'){e.preventDefault();addToQueue();}if(e.key==='Escape')closeModal();if(e.key==='ArrowLeft'&&$('modal').classList.contains('show'))prevImage();if(e.key==='ArrowRight'&&$('modal').classList.contains('show'))nextImage();});
+document.addEventListener('keydown',e=>{
+if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();generate();}
+if(e.ctrlKey&&e.key==='s'){e.preventDefault();savePreset();}
+if(e.ctrlKey&&e.key==='q'){e.preventDefault();addToQueue();}
+if(e.ctrlKey&&e.key==='z'&&document.activeElement===$('prompt')){/* allow default undo */}
+if(e.key==='Escape'){closeModal();closeLightbox();}
+if($('modal').classList.contains('show')||$('lightbox').classList.contains('show')){
+if(e.key==='ArrowLeft'||e.key==='j')prevImage();
+if(e.key==='ArrowRight'||e.key==='k')nextImage();}
+});
 ['img2imgDrop','inpaintDrop','outpaintDrop','upscaleDrop','controlnetDrop'].forEach(id=>{const el=$(id);if(!el)return;el.ondragover=e=>{e.preventDefault();el.classList.add('dragover');};el.ondragleave=()=>el.classList.remove('dragover');el.ondrop=e=>{e.preventDefault();el.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f?.type.startsWith('image/')){const input=el.querySelector('input[type=file]');const dt=new DataTransfer();dt.items.add(f);input.files=dt.files;input.dispatchEvent(new Event('change'));}};});
 
 // PixAI saved models/loras
@@ -1476,6 +1565,6 @@ $('batch').onchange=function(){if($('backend').value==='pixai')updatePixaiCost()
 
 // Init
 if(localStorage.getItem('sdproxy_theme')==='light'){document.body.classList.add('light-theme');document.querySelector('.theme-toggle').textContent='☀️';}
-loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();loadPixaiCredits();updatePixaiCost();initNaiTags();renderComfyWorkflows();
+loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();loadPixaiCredits();updatePixaiCost();initNaiTags();renderComfyWorkflows();loadDraft();updateTokenCount();
 </script>
 </body></html>
