@@ -455,12 +455,20 @@ const backends = {
         const n = body.n || 1;
         const varietyWords = ['', ', detailed', ', beautiful', ', stunning', ', elegant', ', graceful', ', vibrant', ', atmospheric'];
         
+        // Limit prompt length to prevent timeouts (Naistera seems to struggle with very long prompts)
+        const maxPromptLength = 500;
+        let basePrompt = body.prompt;
+        if (basePrompt.length > maxPromptLength) {
+            basePrompt = basePrompt.substring(0, maxPromptLength).trim();
+            log(sessionId, `Naistera prompt truncated to ${maxPromptLength} chars`);
+        }
+        
         const results = [];
         for (let i = 0; i < Math.min(n, 4); i++) {
-            let variedPrompt = body.prompt;
+            let variedPrompt = basePrompt;
             if (n > 1) {
                 const variety = varietyWords[i % varietyWords.length];
-                variedPrompt = body.prompt + variety;
+                variedPrompt = basePrompt + variety;
             }
             
             const params = new URLSearchParams({ token: apiKey });
