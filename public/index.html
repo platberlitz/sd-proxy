@@ -93,19 +93,21 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 
 <div class="tabs">
 <button class="tab active" onclick="showTab('generate')">Generate</button>
+<button class="tab" onclick="showTab('promptgen')">Prompt AI</button>
+<button class="tab" onclick="showTab('queue')">Queue <span id="queueCount"></span></button>
+<button class="tab" onclick="showTab('history')">History</button>
+<button class="tab" onclick="showTab('gallery')">Gallery</button>
+<button class="tab" onclick="showTab('console')">Console</button>
+<button class="tab" onclick="showTab('settings')">Settings</button>
+<span style="color:var(--muted);margin:0 8px">|</span>
+<span style="color:var(--muted);font-size:11px;margin-right:4px">Local:</span>
 <button class="tab" onclick="showTab('img2img')">Img2Img</button>
 <button class="tab" onclick="showTab('inpaint')">Inpaint</button>
 <button class="tab" onclick="showTab('outpaint')">Outpaint</button>
 <button class="tab" onclick="showTab('upscale')">Upscale</button>
 <button class="tab" onclick="showTab('controlnet')">ControlNet</button>
 <button class="tab" onclick="showTab('tools')">Tools</button>
-<button class="tab" onclick="showTab('promptgen')">Prompt AI</button>
-<button class="tab" onclick="showTab('queue')">Queue <span id="queueCount"></span></button>
-<button class="tab" onclick="showTab('history')">History</button>
-<button class="tab" onclick="showTab('gallery')">Gallery</button>
 <button class="tab" onclick="showTab('models')">Models</button>
-<button class="tab" onclick="showTab('console')">Console</button>
-<button class="tab" onclick="showTab('settings')">Settings</button>
 </div>
 
 <!-- Generate Tab -->
