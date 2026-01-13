@@ -96,7 +96,8 @@ Each backend only shows settings it actually supports:
 | NanoGPT | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
 | Gemini | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
 | NovelAI | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ | ✓ | ✗ |
-| Naistera | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Naistera | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
+| CivitAI | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
 | PixAI | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ | ✓ | ✗ |
 | Stability | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ | ✓ | ✗ |
 | Replicate | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ |
@@ -105,6 +106,14 @@ Each backend only shows settings it actually supports:
 | Custom | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ### Backend-Specific Panels
+
+**CivitAI**
+- Model URN: Use format `urn:air:sd1:checkpoint:civitai:MODEL_ID@VERSION_ID`
+- Schedulers: EulerA, Euler, DPM++ variants, DDIM, PLMS, UniPC
+- CLIP Skip: 1-12 layers
+- Additional Networks: LoRAs in JSON format `{"urn": {"type": "Lora", "strength": 1.0}}`
+- Batch Size: 1-4 images
+- **Job-based system**: Uses polling for completion (10-minute timeout)
 
 **Gemini (Nano Banana)**
 - Model: Nano Banana (2.5 Flash) or Nano Banana Pro (3 Pro)
