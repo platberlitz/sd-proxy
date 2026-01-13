@@ -12,177 +12,149 @@ npm start
 # Open http://localhost:3001
 ```
 
-## Local vs Online Features
+## Supported Backends
 
-### ✅ Works Online (No Local GPU Required)
-
-These backends run entirely in the cloud - just need an API key:
-
-| Backend | Requirements | Notes |
-|---------|--------------|-------|
-| **Pollinations** | Nothing (free) | No signup, instant use |
-| **NanoGPT** | API key | Flux models, fast |
-| **PixAI** | API key | Anime-focused, LoRA support |
-| **Stability AI** | API key | Official SDXL |
-| **Replicate** | API key | Many model options |
-| **Fal.ai** | API key | Fast inference |
-| **Together AI** | API key | Cost-effective |
-| **Custom** | API key + URL | Any OpenAI-compatible endpoint |
-
-**Online-only features:**
-- Text-to-Image generation
-- Reference images (Custom backend)
-- Prompt AI (LLM prompt generation)
-- All UI features (history, favorites, presets, etc.)
-
-### 🖥️ Requires Local Setup
-
-These features need software running on your computer:
-
-| Feature | Local Requirement |
-|---------|-------------------|
-| **Local A1111** | [Automatic1111 WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) with `--api` flag |
-| **Local ComfyUI** | [ComfyUI](https://github.com/comfyanonymous/ComfyUI) running |
-| **Img2Img** | Local A1111 only |
-| **Inpainting** | Local A1111 only |
-| **Outpainting** | Local A1111 only |
-| **Upscaling** | Local A1111 only |
-| **ControlNet** | Local A1111 + [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) |
-| **Face Restore** | Local A1111 only |
-| **Hires Fix** | Local A1111 only |
-| **Model Switching** | Local A1111 only |
-| **LoRA Browser** | Local A1111 only |
-| **Auto-Caption (BLIP/CLIP)** | Local A1111 only |
-
-### 💡 Recommendation
-
-- **No GPU?** Use Pollinations (free) or get an API key for NanoGPT/PixAI
-- **Have a GPU?** Run A1111 locally for full feature access
-- **Remote server?** Host sd-proxy on a VPS, use cloud backends
+| Backend | API Key | Notes |
+|---------|---------|-------|
+| **Local A1111** | No | Full control, all local features |
+| **Local ComfyUI** | No | Advanced workflows |
+| **Pollinations** | No (free) | No signup, instant use |
+| **NanoGPT** | Yes | Flux models, fast |
+| **Gemini (Nano Banana)** | Yes | Google's native image gen, reference images |
+| **NovelAI** | Yes | Anime-focused, SMEA, variety+ |
+| **Naistera** | Yes | Simple API with presets |
+| **PixAI** | Yes | Anime-focused, LoRA support |
+| **Stability AI** | Yes | Official SDXL |
+| **Replicate** | Yes | Many model options |
+| **Fal.ai** | Yes | Fast inference |
+| **Together AI** | Yes | Cost-effective |
+| **Custom** | Optional | Any OpenAI-compatible endpoint (chat/completions supported) |
 
 ---
 
-## Features Overview
+## Tabs Overview
 
-### 🎨 Generation Modes
+The UI is organized into two rows of tabs:
 
-| Mode | Description | Requires |
-|------|-------------|----------|
-| **Text-to-Image** | Generate from text prompts | Any backend |
-| **Img2Img** | Transform images with adjustable strength | Local A1111 |
-| **Inpainting** | Paint masks to edit specific areas | Local A1111 |
-| **Outpainting** | Extend images beyond borders | Local A1111 |
-| **Upscaling** | 2x/4x with ESRGAN, R-ESRGAN, Anime6B | Local A1111 |
-| **ControlNet** | Guided generation with pose, depth, canny | Local A1111 + extension |
-| **Variations** | Generate slight variations of existing images | Local A1111 |
-| **Tiled/Seamless** | Create tileable textures | Local A1111 |
+### General Tabs (Work with all backends)
 
-### 🔌 Supported Backends (10+)
+| Tab | Description |
+|-----|-------------|
+| **Generate** | Main text-to-image generation. Select backend, enter prompt, adjust settings. Each backend shows only its supported settings. |
+| **Prompt AI** | AI-powered prompt generation using LLMs (DeepSeek, OpenRouter, OpenAI, or custom). Generates Danbooru tags or natural descriptions from simple requests. |
+| **Queue** | Queue multiple generation jobs to process sequentially. Add prompts to queue and process all at once. |
+| **History** | Searchable history of all generations with thumbnails. Organize into folders, search by prompt. |
+| **Gallery** | Masonry-layout gallery of favorited images. Star images from results to add here. |
+| **Console** | Real-time logs showing API requests, responses, and errors. Session-isolated for multi-user setups. |
+| **Settings** | Configure local URLs, default quality tags, manage presets/templates, keyboard shortcuts, export/import data. |
 
-| Backend | API Key | Best For |
-|---------|---------|----------|
-| **Local A1111** | No | Full control, all features |
-| **Local ComfyUI** | No | Advanced workflows |
-| **Pollinations** | No | Free, quick testing |
-| **NanoGPT** | Yes | Flux models |
-| **PixAI** | Yes | Anime, LoRAs |
-| **Stability AI** | Yes | Official SDXL |
-| **Replicate** | Yes | Model variety |
-| **Fal.ai** | Yes | Fast inference |
-| **Together AI** | Yes | Cost-effective |
-| **Custom** | Optional | Any OpenAI-compatible API |
+### Local Tabs (Require Local A1111/ComfyUI)
 
-### 🤖 Prompt AI (NEW)
+| Tab | Description |
+|-----|-------------|
+| **Img2Img** | Transform existing images with adjustable denoising strength. Upload source image, set strength (0-1), generate. |
+| **Inpaint** | Paint masks on images to edit specific areas. Draw with adjustable brush, invert mask, choose fill mode. |
+| **Outpaint** | Extend images beyond their borders. Choose direction (left/right/up/down) and pixel amount. |
+| **Upscale** | Upscale images 2x or 4x using ESRGAN, R-ESRGAN, or Anime6B upscalers. |
+| **ControlNet** | Guided generation using control images. Supports Canny, Depth, OpenPose, Lineart, Scribble, Tile preprocessors. |
+| **Tools** | Auto-caption (BLIP/CLIP), image comparison slider, X/Y/Z plot generation, batch from file. |
+| **Models** | Switch A1111 models/VAEs, browse LoRAs, download from Civitai. |
 
-AI-powered prompt generation using LLMs:
-- **Providers**: DeepSeek, OpenRouter, OpenAI, or any custom endpoint
-- **Dynamic Model List**: Fetches available models from `/v1/models` API
-- **Prompt Styles**: Danbooru tags (anime) or natural descriptions (realistic)
-- **One-Click Transfer**: Send generated prompt directly to image generation
+---
 
-### 🛠️ Generation Features
+## Backend-Specific Settings
 
-- **Reference Images** - Upload up to 15 reference images for guided generation
-- **Extra Instructions** - Additional text instructions for the image model
+Each backend only shows settings it actually supports:
+
+| Backend | Width/Height | Steps | CFG | Seed | Sampler | Batch | Negative | Ref Images |
+|---------|-------------|-------|-----|------|---------|-------|----------|------------|
+| Local A1111 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
+| ComfyUI | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Pollinations | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| NanoGPT | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
+| Gemini | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| NovelAI | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ | ✓ | ✗ |
+| Naistera | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| PixAI | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ | ✓ | ✗ |
+| Stability | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ | ✓ | ✗ |
+| Replicate | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ |
+| Fal.ai | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
+| Together | ✓ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ |
+| Custom | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+### Backend-Specific Panels
+
+**Gemini (Nano Banana)**
+- Model: Nano Banana (2.5 Flash) or Nano Banana Pro (3 Pro)
+- Aspect Ratio: 1:1, 9:16, 16:9, 4:3, 3:4
+- Supports reference images for image-to-image and style transfer
+
+**NovelAI**
+- Models: V4.5 Curated/Full, V4 Curated/Full, V3 Anime, V3 Furry
+- Samplers: Euler Ancestral, Euler, DPM++ variants, DDIM
+- SMEA/SMEA DYN, CFG Rescale, Decrisper, Quality Tags, Variety+
+- UC Presets: Low Quality + Bad Anatomy, Heavy, Light, None
+
+**Naistera**
+- Aspect Ratio: 1:1, 16:9, 9:16, 3:2, 2:3
+- Presets: Digital Art, Realism
+
+**PixAI**
+- Model ID: Get from PixAI URL (pixai.art/model/**MODEL_ID**)
+- LoRAs: Comma-separated id:weight pairs (e.g., `123456:0.8, 789012:0.6`)
+
+---
+
+## Custom Backend
+
+The Custom backend accepts any OpenAI-compatible endpoint. It supports both:
+
+- `/v1/images/generations` - Standard image generation endpoint
+- `/v1/chat/completions` - Chat completions endpoint (auto-detected)
+
+If your URL doesn't end with either endpoint, `/chat/completions` is appended automatically.
+
+**Features:**
+- Reference images sent as `image_url` content parts
+- Extracts image URLs from response `message.images` or markdown in content
+- Full settings support (all common settings shown)
+
+**Example custom endpoints:**
+- `https://api.example.com/v1` → becomes `/v1/chat/completions`
+- `https://api.example.com/v1/chat/completions` → used as-is
+- `https://api.example.com/v1/images/generations` → used as-is
+
+---
+
+## Features
+
+### Generation Features
+- **Reference Images** - Upload up to 15 images for guided generation (Gemini, Custom)
+- **Extra Instructions** - Additional text for the model
 - **40+ Style Presets** - Anime, Photorealistic, Cyberpunk, Ghibli, etc.
 - **Wildcards** - `{red|blue|green} hair` for random selection
 - **Prompt Matrix** - `[a|b] [c|d]` generates all 4 combinations
-- **Hires Fix** - Two-pass high-resolution generation
-- **Face Restore** - GFPGAN/CodeFormer integration
-- **Batch Generation** - Multiple images at once
-- **Seed Control** - Reproducible results
+- **Prompt Autocomplete** - 150+ Danbooru tags with Tab completion
 
-### 🎛️ ControlNet Support
+### Prompt AI
+- **Providers**: DeepSeek, OpenRouter, OpenAI, or custom endpoint
+- **Dynamic Models**: Fetches available models from `/v1/models`
+- **Styles**: Danbooru tags (anime) or natural descriptions (realistic)
+- **One-Click**: Transfer generated prompt directly to Generate tab
 
-| Preprocessor | Use Case |
-|--------------|----------|
-| Canny | Edge detection |
-| Depth (MiDaS) | Depth maps |
-| OpenPose | Pose estimation |
-| Lineart | Line extraction |
-| Soft Edge | Soft boundaries |
-| Scribble | Hand-drawn guides |
-| Tile | Detail enhancement |
+### Session Isolation
+Multi-user safe with session-based isolation:
+- Each browser gets unique session ID
+- Progress updates only show for your generations
+- Console logs only show your requests
+- Safe for shared/remote deployments
 
-### 🔧 Tools
-
-- **Auto-Caption** - BLIP/CLIP image interrogation
-- **Prompt Enhancement** - AI improves your prompts
-- **Image Comparison** - Side-by-side slider comparison
-- **X/Y/Z Plot** - Compare settings in a grid
-- **Batch from File** - Process multiple prompts from text
-- **PNG Metadata** - Extract generation parameters
-
-### 📦 Model Management
-
-- **Model Switching** - Change A1111 checkpoint from UI
-- **VAE Selection** - Choose VAE for generation
-- **LoRA Browser** - Browse and insert LoRAs with one click
-- **Civitai Download** - Download models directly from Civitai
-- **Embedding Support** - Use textual inversions
-
-### 📋 Organization
-
-- **Queue System** - Queue prompts, process sequentially
-- **History** - Searchable with thumbnails
-- **Favorites** - Star and save best images
-- **Folders** - Organize into collections
-- **Presets** - Save/load generation settings
-- **Templates** - Reusable prompt snippets
-- **Export/Import** - Backup all data
-
-### 📋 Console (NEW)
-
-Real-time logging with session isolation:
-- **Live Logs** - See generation requests, responses, and errors in real-time
-- **Session Isolation** - Each user only sees their own logs (multi-user safe)
-- **Auto-scroll** - Toggle auto-scroll for log output
-- **Color-coded** - Errors in red, warnings in yellow
-
-### 🖥️ User Interface
-
-- **Dark Green Theme** - Easy on the eyes
-- **Gallery View** - Masonry layout for favorites
-- **Progress Bar** - Real-time generation progress
-- **Image Info Overlay** - Params on hover
-- **Prompt Autocomplete** - 150+ Danbooru tags
-- **Prompt Tags Display** - Visual tag management
-- **Drag & Drop** - Drop images anywhere
-- **Mobile Responsive** - Works on all devices
-
-### ⌨️ Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl + Enter` | Generate |
-| `Ctrl + S` | Save preset |
-| `Ctrl + Q` | Add to queue |
-| `←` / `→` | Navigate gallery |
-| `Escape` | Close modal |
-
-### 💰 Cost Tracking
-
-Track API usage costs per backend with detailed breakdown.
+### Console Logging
+Real-time visibility into what's happening:
+- API requests with backend and prompt info
+- Response status and image counts
+- Errors with full details
+- Color-coded (red for errors, yellow for warnings)
 
 ---
 
@@ -197,19 +169,16 @@ POST /v1/images/generations
 ```bash
 curl http://localhost:3001/v1/images/generations \
   -H "Content-Type: application/json" \
-  -H "X-Backend: local" \
-  -H "X-Local-Url: http://127.0.0.1:7860" \
+  -H "X-Backend: gemini" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -H "X-Session-Id: your-session-id" \
   -d '{
-    "prompt": "masterpiece, 1girl, smile",
-    "negative_prompt": "lowres, bad anatomy",
-    "width": 512,
-    "height": 768,
-    "steps": 25,
-    "cfg_scale": 7,
-    "sampler": "dpmpp_2m",
-    "scheduler": "karras",
-    "reference_images": ["data:image/png;base64,..."]
+    "prompt": "a cat in a garden",
+    "reference_images": ["data:image/png;base64,..."],
+    "gemini": {
+      "model": "gemini-2.5-flash-image",
+      "aspect_ratio": "16:9"
+    }
   }'
 ```
 
@@ -217,47 +186,46 @@ curl http://localhost:3001/v1/images/generations \
 
 | Header | Description |
 |--------|-------------|
-| `X-Backend` | Backend to use |
-| `X-Local-Url` | A1111/ComfyUI URL |
+| `X-Backend` | Backend to use (local, gemini, novelai, etc.) |
+| `X-Local-Url` | A1111/ComfyUI URL (default: http://127.0.0.1:7860) |
 | `X-Custom-Url` | Custom endpoint URL |
 | `X-Session-Id` | Session ID for isolated logs/progress |
-| `Authorization` | `Bearer <key>` |
+| `Authorization` | `Bearer <api_key>` |
 
-### Body Parameters
+### Backend-Specific Body Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `prompt` | string | Image description |
-| `negative_prompt` | string | What to avoid |
-| `width` | number | Image width |
-| `height` | number | Image height |
-| `steps` | number | Sampling steps |
-| `cfg_scale` | number | Prompt adherence |
-| `sampler` | string | Sampling method |
-| `scheduler` | string | Noise schedule |
-| `seed` | number | Random seed |
-| `n` | number | Batch size |
-| `reference_images` | array | Base64 reference images (up to 15) |
-| `init_image` | string | Base64 for img2img |
-| `mask` | string | Base64 mask for inpainting |
-| `strength` | number | Denoising strength |
-| `controlnet` | object | ControlNet settings |
-| `hires_fix` | boolean | Enable hires fix |
-| `face_restore` | boolean | Face restoration |
-| `tiling` | boolean | Seamless tiling |
-| `outpaint` | object | Outpainting settings |
-
-### ControlNet Object
-
+**Gemini:**
 ```json
 {
-  "controlnet": {
-    "image": "<base64>",
-    "preprocessor": "canny",
-    "model": "control_v11p_sd15_canny",
-    "weight": 1.0,
-    "guidance_start": 0,
-    "guidance_end": 1
+  "gemini": {
+    "model": "gemini-2.5-flash-image",
+    "aspect_ratio": "16:9"
+  }
+}
+```
+
+**NovelAI:**
+```json
+{
+  "nai": {
+    "model": "nai-diffusion-4-5-curated",
+    "sampler": "k_euler_ancestral",
+    "steps": 28,
+    "scale": 5,
+    "cfg_rescale": 0,
+    "smea": true,
+    "smea_dyn": false,
+    "variety_plus": false
+  }
+}
+```
+
+**Naistera:**
+```json
+{
+  "naistera": {
+    "aspect_ratio": "16:9",
+    "preset": "digital"
   }
 }
 ```
@@ -270,44 +238,33 @@ POST /v1/chat/completions       Chat-based generation
 GET  /v1/models                 List backends
 
 GET  /api/session               Get new session ID
-GET  /api/progress/:sessionId   SSE progress stream (session-isolated)
-GET  /api/logs/:sessionId       SSE logs stream (session-isolated)
+GET  /api/progress/:sessionId   SSE progress stream
+GET  /api/logs/:sessionId       SSE logs stream
 
-POST /api/upscale               Upscale image
-POST /api/interrogate           Auto-caption (BLIP/CLIP)
-POST /api/interrupt             Stop generation
-GET  /api/a1111/progress        Generation progress
-GET  /api/a1111/models          List models/VAEs/LoRAs
-POST /api/a1111/model           Switch model/VAE
-POST /api/controlnet/preprocess Preprocess for ControlNet
-POST /api/civitai/download      Download from Civitai
+POST /api/upscale               Upscale image (Local)
+POST /api/interrogate           Auto-caption (Local)
+POST /api/interrupt             Stop generation (Local)
+GET  /api/a1111/models          List models/VAEs/LoRAs (Local)
+POST /api/a1111/model           Switch model/VAE (Local)
+POST /api/controlnet/preprocess Preprocess for ControlNet (Local)
+
 POST /api/enhance-prompt        AI prompt enhancement
 POST /api/xyz-plot              X/Y/Z comparison grid
 POST /api/batch-file            Batch from prompts list
 POST /api/metadata              Extract PNG metadata
 
-GET  /api/queue                 List queue
-POST /api/queue                 Add to queue
-DELETE /api/queue/:id           Remove from queue
-POST /api/queue/process         Process all
-
-GET  /api/history               List history
-DELETE /api/history             Clear history
-GET  /api/favorites             List favorites
-POST /api/favorites             Add favorite
-GET  /api/presets               List presets
-POST /api/presets               Save preset
-GET  /api/templates             List templates
-POST /api/templates             Save template
-GET  /api/folders               List folders
-POST /api/folders               Create folder
-GET  /api/costs                 Cost tracking
-DELETE /api/costs               Reset costs
+GET/POST/DELETE /api/queue      Queue management
+GET/POST/DELETE /api/history    History management
+GET/POST/DELETE /api/favorites  Favorites management
+GET/POST/DELETE /api/presets    Presets management
+GET/POST/DELETE /api/templates  Templates management
+GET/POST/DELETE /api/folders    Folders management
+GET/DELETE /api/costs           Cost tracking
 ```
 
 ---
 
-## Local Backend Setup
+## Local Setup
 
 ### Automatic1111 WebUI
 
@@ -315,7 +272,7 @@ DELETE /api/costs               Reset costs
 ./webui.sh --api
 ```
 
-For ControlNet, install the [sd-webui-controlnet](https://github.com/Mikubill/sd-webui-controlnet) extension.
+For ControlNet, install [sd-webui-controlnet](https://github.com/Mikubill/sd-webui-controlnet).
 
 ### ComfyUI
 
@@ -327,53 +284,25 @@ python main.py
 
 ## Prompt Syntax
 
-### Wildcards
 ```
-{red|blue|green} hair    → randomly picks one
-```
-
-### Matrix (generates all combinations)
-```
-[happy|sad] [cat|dog]    → 4 images: happy cat, happy dog, sad cat, sad dog
-```
-
-### Weights
-```
-(important tag:1.3)      → increases weight
-(less important:0.7)     → decreases weight
-```
-
-### LoRA
-```
-<lora:name:0.7>          → applies LoRA with weight 0.7
-```
-
-### Regional Prompting
-```
-prompt1 BREAK prompt2    → different prompts for different regions
+{red|blue|green} hair    → Wildcard: randomly picks one
+[happy|sad] [cat|dog]    → Matrix: generates all 4 combinations
+(important:1.3)          → Weight: increase/decrease emphasis
+<lora:name:0.7>          → LoRA: apply with weight
+prompt1 BREAK prompt2    → Regional: different areas
 ```
 
 ---
 
-## Data Storage
+## Keyboard Shortcuts
 
-```
-data/
-├── history.json
-├── favorites.json
-├── folders.json
-├── presets.json
-├── templates.json
-└── costs.json
-```
-
----
-
-## Environment Variables
-
-```bash
-PORT=3001
-```
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl + Enter` | Generate |
+| `Ctrl + S` | Save preset |
+| `Ctrl + Q` | Add to queue |
+| `←` / `→` | Navigate gallery |
+| `Escape` | Close modal |
 
 ---
 
