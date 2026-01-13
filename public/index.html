@@ -131,7 +131,24 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 </div>
 <div id="pixaiSettings" style="display:none" class="mt card">
 <h3>PixAI Settings</h3>
-<div><label>Model ID</label><input id="pixaiModel" placeholder="1648918127446573124"><small style="color:var(--muted);display:block;margin-top:4px">Find model ID from PixAI URL: pixai.art/model/<b>MODEL_ID</b></small></div>
+<div class="row-2">
+<div><label>Saved Models</label><select id="pixaiSavedModels" onchange="loadPixaiModel()"><option value="">-- Select saved --</option></select></div>
+<div><label>Model ID</label><input id="pixaiModel" placeholder="1648918127446573124"></div>
+</div>
+<div class="row-3 mt">
+<div><label>Model Name</label><input id="pixaiModelName" placeholder="My Model Name"></div>
+<div style="display:flex;align-items:flex-end;gap:4px"><button class="btn-sm" onclick="savePixaiModel()">Save Model</button><button class="btn-sm btn-danger" onclick="deletePixaiModel()">Delete</button></div>
+</div>
+<div class="row-2 mt">
+<div><label>Saved LoRAs</label><select id="pixaiSavedLoras" onchange="loadPixaiLora()"><option value="">-- Select saved --</option></select></div>
+<div><label>LoRAs (id:weight)</label><input id="pixaiLoras" placeholder="123456:0.8, 789012:0.6"></div>
+</div>
+<div class="row-3 mt">
+<div><label>LoRA Name</label><input id="pixaiLoraName" placeholder="My LoRA Name"></div>
+<div><label>LoRA ID:Weight</label><input id="pixaiLoraId" placeholder="123456:0.8"></div>
+<div style="display:flex;align-items:flex-end;gap:4px"><button class="btn-sm" onclick="savePixaiLora()">Save LoRA</button><button class="btn-sm btn-danger" onclick="deletePixaiLora()">Delete</button></div>
+</div>
+<small style="color:var(--muted);display:block;margin-top:4px">Find IDs from PixAI URL: pixai.art/model/<b>MODEL_ID</b></small>
 <div class="row-2 mt">
 <div><label>Sampler</label><select id="pixaiSampler">
 <option value="">Default</option>
@@ -163,7 +180,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <option value="UniPC">UniPC</option>
 <option value="Restart">Restart</option>
 </select></div>
-<div><label>LoRAs (id:weight)</label><input id="pixaiLoras" placeholder="123456:0.8, 789012:0.6"></div>
+<div></div>
 </div>
 <div class="row-3 mt">
 <div><label><input type="checkbox" id="pixaiFaceFix"> Face Fix (ADetailer)</label></div>
@@ -1139,7 +1156,19 @@ function showWildcardHelp(){alert('Wildcards: {a|b|c} = random pick\\nMatrix: [a
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();generate();}if(e.ctrlKey&&e.key==='s'){e.preventDefault();savePreset();}if(e.ctrlKey&&e.key==='q'){e.preventDefault();addToQueue();}if(e.key==='Escape')closeModal();if(e.key==='ArrowLeft'&&$('modal').classList.contains('show'))prevImage();if(e.key==='ArrowRight'&&$('modal').classList.contains('show'))nextImage();});
 ['img2imgDrop','inpaintDrop','outpaintDrop','upscaleDrop','controlnetDrop'].forEach(id=>{const el=$(id);if(!el)return;el.ondragover=e=>{e.preventDefault();el.classList.add('dragover');};el.ondragleave=()=>el.classList.remove('dragover');el.ondrop=e=>{e.preventDefault();el.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f?.type.startsWith('image/')){const input=el.querySelector('input[type=file]');const dt=new DataTransfer();dt.items.add(f);input.files=dt.files;input.dispatchEvent(new Event('change'));}};});
 
+// PixAI saved models/loras
+let pixaiModels=JSON.parse(localStorage.getItem('pixai_models')||'[]');
+let pixaiLoras=JSON.parse(localStorage.getItem('pixai_loras')||'[]');
+function renderPixaiModels(){$('pixaiSavedModels').innerHTML='<option value="">-- Select saved --</option>'+pixaiModels.map((m,i)=>`<option value="${i}">${m.name} (${m.id})</option>`).join('');}
+function renderPixaiLoras(){$('pixaiSavedLoras').innerHTML='<option value="">-- Select saved --</option>'+pixaiLoras.map((l,i)=>`<option value="${i}">${l.name} (${l.id})</option>`).join('');}
+function savePixaiModel(){const id=$('pixaiModel').value,name=$('pixaiModelName').value||id;if(!id)return alert('Enter model ID');pixaiModels.push({id,name});localStorage.setItem('pixai_models',JSON.stringify(pixaiModels));renderPixaiModels();$('pixaiModelName').value='';}
+function deletePixaiModel(){const i=$('pixaiSavedModels').value;if(i==='')return;pixaiModels.splice(i,1);localStorage.setItem('pixai_models',JSON.stringify(pixaiModels));renderPixaiModels();}
+function loadPixaiModel(){const i=$('pixaiSavedModels').value;if(i==='')return;$('pixaiModel').value=pixaiModels[i].id;}
+function savePixaiLora(){const id=$('pixaiLoraId').value,name=$('pixaiLoraName').value||id;if(!id)return alert('Enter LoRA ID:weight');pixaiLoras.push({id,name});localStorage.setItem('pixai_loras',JSON.stringify(pixaiLoras));renderPixaiLoras();$('pixaiLoraName').value='';$('pixaiLoraId').value='';}
+function deletePixaiLora(){const i=$('pixaiSavedLoras').value;if(i==='')return;pixaiLoras.splice(i,1);localStorage.setItem('pixai_loras',JSON.stringify(pixaiLoras));renderPixaiLoras();}
+function loadPixaiLora(){const i=$('pixaiSavedLoras').value;if(i==='')return;const cur=$('pixaiLoras').value;$('pixaiLoras').value=cur?(cur+', '+pixaiLoras[i].id):pixaiLoras[i].id;}
+
 // Init
-loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();
+loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();
 </script>
 </body></html>
