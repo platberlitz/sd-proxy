@@ -222,8 +222,10 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 </div>
 <div id="promptTags" class="mt"></div>
 
+<div id="negativeSetting">
 <label>Negative Prompt</label>
 <textarea id="negative" rows="2">lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, blurry, deformed, ugly, duplicate, morbid, mutilated, mutation, disfigured, malformed limbs, extra limbs, fused fingers, too many fingers, long neck</textarea>
+</div>
 
 <div id="commonSettings">
 <div class="row-5">
@@ -662,7 +664,7 @@ function onBackendChange(){
     $('batchSetting').style.display=s.batch?'':'none';
     $('hiresRow').style.display=s.hires?'':'none';
     $('refImagesSection').style.display=s.refImages?'':'none';
-    $('negative').parentElement.style.display=s.negative?'':'none';
+    $('negativeSetting').style.display=s.negative?'':'none';
     fetchBackendModels();
 }
 function randomSeed(){$('seed').value=Math.floor(Math.random()*2147483647);}
