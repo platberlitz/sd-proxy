@@ -1019,7 +1019,7 @@ function onBackendChange(){
     $('comfyuiSettings').style.display=b==='comfyui'?'block':'none';
     $('pixaiSettings').style.display=b==='pixai'?'block':'none';
     $('novelaiSettings').style.display=b==='novelai'?'block':'none';
-    $('naisteraSettings').style.display=b==='naistera'?'block':'none';
+    $('naisteraSettings').style.display='none';
     $('geminiSettings').style.display=b==='gemini'?'block':'none';
     $('extraInstructionsRow').style.display=['gemini','custom'].includes(b)?'block':'none';
     if(b==='novelai')updateNaiCost();
