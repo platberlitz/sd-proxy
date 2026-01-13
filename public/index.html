@@ -121,7 +121,11 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div><label>Model</label><select id="model"><option value="">Select model</option></select></div>
 </div>
 <div id="customEndpoint" style="display:none" class="mt"><label>Custom URL</label><input id="customUrl" placeholder="https://api.example.com/v1"></div>
-<div id="pixaiSettings" style="display:none" class="mt"><label>LoRAs (id:weight, comma-separated)</label><input id="pixaiLoras" placeholder="123456:0.8, 789012:0.6"></div>
+<div id="pixaiSettings" style="display:none" class="mt card">
+<h3>PixAI Settings</h3>
+<div><label>Model ID</label><input id="pixaiModel" placeholder="1648918127446573124"><small style="color:var(--muted);display:block;margin-top:4px">Find model ID from PixAI URL: pixai.art/model/<b>MODEL_ID</b></small></div>
+<div class="mt"><label>LoRAs (id:weight, comma-separated)</label><input id="pixaiLoras" placeholder="123456:0.8, 789012:0.6"></div>
+</div>
 
 <div id="novelaiSettings" style="display:none" class="mt card">
 <h3>NovelAI Settings</h3>
@@ -735,7 +739,7 @@ async function generate(){
             sampler:$('sampler').value,scheduler:$('scheduler').value,seed:+$('seed').value,n:+$('batch').value,model:$('model').value,
             hires_fix:$('hiresFix').checked,hires_scale:+$('hiresScale').value,face_restore:$('faceRestore').checked,tiling:$('tiling').checked};
         if(refImages.length)body.reference_images=refImages;
-        if($('backend').value==='pixai'&&$('pixaiLoras').value){body.loras=$('pixaiLoras').value.split(',').map(l=>{const[id,w]=l.trim().split(':');return{id:id.trim(),weight:parseFloat(w)||0.8};}).filter(l=>l.id);}
+        if($('backend').value==='pixai'){if($('pixaiModel').value)body.model=$('pixaiModel').value;if($('pixaiLoras').value){body.loras=$('pixaiLoras').value.split(',').map(l=>{const[id,w]=l.trim().split(':');return{id:id.trim(),weight:parseFloat(w)||0.8};}).filter(l=>l.id);}}
         if($('backend').value==='novelai'){body.nai={model:$('naiModel').value,sampler:$('naiSampler').value,steps:+$('naiSteps').value,scale:+$('naiScale').value,cfg_rescale:+$('naiRescale').value,noise_schedule:$('naiSchedule').value,uc_preset:+$('naiUcPreset').value,uncond_scale:+$('naiUncondScale').value,smea:$('naiSmea').checked,smea_dyn:$('naiSmeaDyn').checked,decrisper:$('naiDecrisper').checked,quality_toggle:$('naiQuality').checked,variety_plus:$('naiVariety').checked};}
         if($('backend').value==='naistera'){body.naistera={aspect_ratio:$('naisteraAspect').value,preset:$('naisteraPreset').value};}
         if($('backend').value==='gemini'){body.gemini={model:$('geminiModel').value,aspect_ratio:$('geminiAspect').value};}
