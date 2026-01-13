@@ -1,13 +1,13 @@
 # SD Proxy
 
 ## TL;DR
-Multi-backend image generation proxy with web UI. Supports 12+ backends (A1111, ComfyUI, NovelAI, PixAI, Naistera, etc.) with OpenAI-compatible API. Features: prompt AI, queue system, history, gallery, real-time progress, export/import.
+Multi-backend image generation proxy with web UI and login protection. Supports 12+ backends (A1111, ComfyUI, NovelAI, PixAI, Naistera, etc.) with OpenAI-compatible API. Features: prompt AI, queue system, history, gallery, real-time progress, export/import.
 
-**Quick start:** `git clone → npm install → npm start → http://localhost:3001`
+**Quick start:** `git clone → npm install → npm start → http://localhost:3001 → admin/admin`
 
 ---
 
-Full-featured image generation proxy with OpenAI-compatible API and comprehensive web dashboard.
+Full-featured image generation proxy with OpenAI-compatible API, comprehensive web dashboard, and login protection.
 
 ## Quick Start
 
@@ -17,6 +17,19 @@ cd sd-proxy
 npm install
 npm start
 # Open http://localhost:3001
+# Login: admin / admin
+```
+
+## Authentication
+
+- **Default credentials:** `admin` / `admin`
+- **Custom credentials:** Set `ADMIN_USER` and `ADMIN_PASS` environment variables
+- **Session security:** Set `SESSION_SECRET` for production
+- **API access:** API endpoints remain unprotected for programmatic use
+
+```bash
+# Custom credentials example
+ADMIN_USER="myuser" ADMIN_PASS="mypass" npm start
 ```
 
 ## Supported Backends
@@ -171,6 +184,7 @@ If your URL doesn't end with either endpoint, `/chat/completions` is appended au
 - **Providers**: DeepSeek, OpenRouter, OpenAI, or custom endpoint
 - **Dynamic Models**: Fetches available models from `/v1/models`
 - **Styles**: Danbooru tags (anime) or natural descriptions (realistic)
+- **Naistera Mode**: Optional 250-character limit for Naistera compatibility
 - **One-Click**: Transfer generated prompt directly to Generate tab
 
 ### Organization
@@ -205,6 +219,46 @@ Real-time visibility into what's happening:
 - Response status and image counts
 - Errors with full details
 - Color-coded (red for errors, yellow for warnings)
+
+---
+
+### Security & Deployment
+
+**Authentication:**
+- Web dashboard protected by login (default: admin/admin)
+- API endpoints remain unprotected for programmatic access
+- Session-based authentication with configurable credentials
+
+**Production Setup:**
+```bash
+# Set custom credentials
+export ADMIN_USER="your-username"
+export ADMIN_PASS="your-secure-password"
+export SESSION_SECRET="your-random-secret-key"
+
+# Start with PM2 for production
+npm install -g pm2
+pm2 start server.js --name sd-proxy
+pm2 startup
+pm2 save
+```
+
+**Reverse Proxy (Nginx):**
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
 
 ---
 
