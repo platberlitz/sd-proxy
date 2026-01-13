@@ -271,7 +271,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 </select></div>
 </div>
 <div class="row-3 mt">
-<div><label>Steps</label><input type="number" id="naiSteps" value="28" min="1" max="50"></div>
+<div><label>Steps</label><input type="number" id="naiSteps" value="28" min="1" max="50" oninput="updateNaiCost()"></div>
 <div><label>Guidance (CFG)</label><input type="number" id="naiScale" value="5" min="0" max="10" step="0.1"></div>
 <div><label>CFG Rescale</label><input type="number" id="naiRescale" value="0" min="0" max="1" step="0.02"></div>
 </div>
@@ -299,6 +299,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div><label><input type="checkbox" id="naiQuality" checked> Quality Tags</label></div>
 </div>
 <div><label><input type="checkbox" id="naiVariety"> Variety+</label></div>
+<div id="naiCostEstimate" class="mt" style="padding:6px;background:#1a2e1a;border-radius:4px;font-size:11px"></div>
 <div class="mt"><label>Artist/Style Tags <button class="btn-sm" onclick="randomNaiTags()" style="float:right">🎲 Random</button></label>
 <input type="text" id="naiTagSearch" placeholder="Search artists/styles..." oninput="filterNaiTags('naiTagsGrid',this.value)" class="mt">
 <div id="naiTagsGrid" class="flex mt" style="gap:4px;flex-wrap:wrap;max-height:150px;overflow-y:auto"></div></div>
@@ -616,6 +617,23 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <button onclick="generateBatch()" class="btn-primary mt">Generate All</button>
 </div>
 </div>
+<div class="card mt">
+<h3>🗺️ Regional Prompting Helper</h3>
+<p style="color:var(--muted);font-size:11px">Build regional prompts for A1111 Regional Prompter extension</p>
+<div class="row-2 mt">
+<div><label>Layout</label><select id="regionLayout" onchange="updateRegionPreview()">
+<option value="1,1">2 columns</option>
+<option value="1;1">2 rows</option>
+<option value="1,1,1">3 columns</option>
+<option value="1;1;1">3 rows</option>
+<option value="1,1;1,1">2×2 grid</option>
+</select></div>
+<div><label>Mode</label><select id="regionMode"><option value="Columns">Columns</option><option value="Rows">Rows</option></select></div>
+</div>
+<div id="regionInputs" class="mt"></div>
+<div class="flex mt"><button onclick="buildRegionalPrompt()" class="btn-primary">Build Prompt</button><button onclick="copyRegionalPrompt()" class="btn-sm">Copy</button></div>
+<textarea id="regionOutput" rows="3" class="mt" readonly placeholder="Regional prompt will appear here..."></textarea>
+</div>
 <div id="toolsResult" class="img-grid"></div>
 </div>
 
@@ -851,6 +869,14 @@ function filterNaiTags(gridId,val){renderNaiTags(gridId,val);}
 function addTagToPrompt(tag){const p=$('prompt');const v=p.value.trim();p.value=v+(v&&!v.endsWith(',')&&!v.endsWith(', ')?', ':v?' ':'')+tag+', ';p.focus();}
 function randomNaiTags(){const artists=[...NAI_ARTISTS].sort(()=>Math.random()-0.5).slice(0,2);const styles=[...NAI_STYLES].sort(()=>Math.random()-0.5).slice(0,2);[...artists,...styles].forEach(t=>addTagToPrompt(t));}
 
+// NAI Anlas cost estimator
+function updateNaiCost(){
+const w=+$('width').value||832,h=+$('height').value||1216,steps=+$('naiSteps').value||28,n=+$('batch').value||1;
+const pixels=w*h;const smea=$('naiSmea').checked||$('naiSmeaDyn').checked;
+// NAI pricing: base cost depends on resolution and steps
+let cost=Math.ceil((pixels/1024/1024)*steps*0.2);if(smea)cost=Math.ceil(cost*1.2);cost*=n;
+const el=$('naiCostEstimate');if(el)el.innerHTML=`💎 Estimated: <strong>${cost}</strong> Anlas (${w}×${h}, ${steps} steps${smea?', SMEA':''}${n>1?', ×'+n:''})`;}
+
 // Prompt history
 let promptHistory=JSON.parse(localStorage.getItem('sdproxy_prompt_history')||'[]');
 function savePromptToHistory(p){if(!p||promptHistory[0]===p)return;promptHistory.unshift(p);promptHistory=promptHistory.slice(0,50);localStorage.setItem('sdproxy_prompt_history',JSON.stringify(promptHistory));}
@@ -892,6 +918,7 @@ function onBackendChange(){
     $('naisteraSettings').style.display=b==='naistera'?'block':'none';
     $('geminiSettings').style.display=b==='gemini'?'block':'none';
     $('extraInstructionsRow').style.display=['gemini','custom'].includes(b)?'block':'none';
+    if(b==='novelai')updateNaiCost();
     
     // Define what each backend supports
     const supports={
@@ -1201,6 +1228,20 @@ function loadCompare(n,input){const f=input.files[0];if(!f)return;const r=new Fi
     if(n===1){compareImg1=e.target.result;$('compareImg1').src=compareImg1;}else{compareImg2=e.target.result;$('compareImg2').src=compareImg2;}
     if(compareImg1&&compareImg2)$('compareContainer').style.display='block';};r.readAsDataURL(f);}
 function updateCompare(v){$('compareContainer').querySelector('.overlay').style.width=v+'%';}
+
+// Regional Prompting Helper
+function updateRegionPreview(){
+const layout=$('regionLayout').value;const parts=layout.includes(';')?layout.split(';'):layout.split(',');
+const count=layout.replace(/[^,;]/g,'').length+1;
+$('regionInputs').innerHTML=Array(count).fill(0).map((_,i)=>`<div class="mt"><label>Region ${i+1}</label><input id="region${i}" placeholder="Prompt for region ${i+1}"></div>`).join('');}
+function buildRegionalPrompt(){
+const layout=$('regionLayout').value;const mode=$('regionMode').value;
+const count=layout.replace(/[^,;]/g,'').length+1;
+const prompts=Array(count).fill(0).map((_,i)=>$('region'+i)?.value||'').filter(p=>p);
+const output=`ADDCOMM ${layout}\nADDBASE ${$('prompt').value}\nADDCOL ${prompts.join(' BREAK ')}`;
+$('regionOutput').value=output;}
+function copyRegionalPrompt(){navigator.clipboard.writeText($('regionOutput').value);$('status').textContent='Copied!';}
+updateRegionPreview();
 
 async function generateXYZ(){
     const xParam=$('xyzX').value,yParam=$('xyzY').value,xVals=$('xyzXValues').value.split(',').map(v=>v.trim()).filter(v=>v),yVals=$('xyzYValues').value.split(',').map(v=>v.trim()).filter(v=>v);
