@@ -500,7 +500,8 @@ const backends = {
             log(sessionId, `Naistera prompt truncated to ${maxPromptLength} chars`);
         }
         
-        const results = [];
+        // Generate all requests in parallel to avoid blocking
+        const requests = [];
         for (let i = 0; i < Math.min(n, 4); i++) {
             let variedPrompt = basePrompt;
             if (n > 1) {
@@ -512,21 +513,49 @@ const backends = {
             if (opts.aspect_ratio) params.set('aspect_ratio', opts.aspect_ratio);
             if (opts.preset) params.set('preset', opts.preset);
             
+            // Add cache-busting timestamp to prevent stuck results
+            params.set('_t', Date.now().toString() + '_' + i);
+            
             const url = `https://naistera.org/prompt/${encodeURIComponent(variedPrompt)}?${params}`;
             log(sessionId, `Naistera request ${i+1}: ${url.substring(0, 80)}...`);
             
-            // Longer timeout for Naistera (especially 16:9 which can be slow)
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+            // Create individual request promise with proper cleanup
+            const requestPromise = (async () => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    controller.abort();
+                    log(sessionId, `Naistera request ${i+1} timed out after 2 minutes`);
+                }, 120000); // 2 minutes
+                
+                try {
+                    const res = await fetch(url, { 
+                        signal: controller.signal,
+                        headers: {
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache'
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                    
+                    if (!res.ok) throw new Error(`Naistera error: ${res.status}`);
+                    
+                    const buffer = await res.arrayBuffer();
+                    const b64 = Buffer.from(buffer).toString('base64');
+                    return { b64_json: b64 };
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    if (error.name === 'AbortError') {
+                        throw new Error(`Naistera request ${i+1} was aborted (timeout)`);
+                    }
+                    throw error;
+                }
+            })();
             
-            const res = await fetch(url, { signal: controller.signal });
-            clearTimeout(timeoutId);
-            if (!res.ok) throw new Error(`Naistera error: ${res.status}`);
-            
-            const buffer = await res.arrayBuffer();
-            const b64 = Buffer.from(buffer).toString('base64');
-            results.push({ b64_json: b64 });
+            requests.push(requestPromise);
         }
+        
+        // Wait for all requests to complete
+        const results = await Promise.all(requests);
         
         log(sessionId, `Naistera returned ${results.length} images`);
         return { data: results };
