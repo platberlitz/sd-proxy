@@ -47,22 +47,15 @@ app.use(express.static('public'));
 // Data storage
 const DATA_DIR = path.join(__dirname, 'data');
 const MODELS_DIR = path.join(__dirname, 'models');
-[DATA_DIR, MODELS_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d); });
-const getDataFile = (name) => path.join(DATA_DIR, `${name}.json`);
+[DATA_DIR, MODELS_DIR].forEach(d => fs.existsSync(d) || fs.mkdirSync(d));
+const getDataFile = name => path.join(DATA_DIR, `${name}.json`);
 const loadData = (name, def = []) => { try { return JSON.parse(fs.readFileSync(getDataFile(name))); } catch { return def; } };
 const saveData = (name, data) => fs.writeFileSync(getDataFile(name), JSON.stringify(data, null, 2));
 
-let queue = [];
-let history = loadData('history', []);
-let favorites = loadData('favorites', []);
-let folders = loadData('folders', []);
-let presets = loadData('presets', []);
-let templates = loadData('templates', []);
-let costs = loadData('costs', { total: 0, byBackend: {} });
-let currentGeneration = null; // For progress tracking
+let queue = [], history = loadData('history', []), favorites = loadData('favorites', []), folders = loadData('folders', []), presets = loadData('presets', []), templates = loadData('templates', []), costs = loadData('costs', { total: 0, byBackend: {} }), currentGeneration = null;
 
-// SSE clients with session isolation
-let sseClients = new Map(); // sessionId -> { progress: res, logs: res }
+// SSE clients
+const sseClients = new Map();
 
 // CORS
 app.use((req, res, next) => {
@@ -82,7 +75,7 @@ app.get('/api/session', (req, res) => {
     res.json({ sessionId });
 });
 
-// Progress SSE endpoint (session-isolated)
+// SSE endpoints
 app.get('/api/progress/:sessionId', (req, res) => {
     const { sessionId } = req.params;
     res.setHeader('Content-Type', 'text/event-stream');
@@ -90,10 +83,9 @@ app.get('/api/progress/:sessionId', (req, res) => {
     res.setHeader('Connection', 'keep-alive');
     if (!sseClients.has(sessionId)) sseClients.set(sessionId, {});
     sseClients.get(sessionId).progress = res;
-    req.on('close', () => { if (sseClients.has(sessionId)) { delete sseClients.get(sessionId).progress; if (!Object.keys(sseClients.get(sessionId)).length) sseClients.delete(sessionId); } });
+    req.on('close', () => { const c = sseClients.get(sessionId); if (c) { delete c.progress; if (!Object.keys(c).length) sseClients.delete(sessionId); } });
 });
 
-// Logs SSE endpoint (session-isolated)
 app.get('/api/logs/:sessionId', (req, res) => {
     const { sessionId } = req.params;
     res.setHeader('Content-Type', 'text/event-stream');
@@ -101,7 +93,7 @@ app.get('/api/logs/:sessionId', (req, res) => {
     res.setHeader('Connection', 'keep-alive');
     if (!sseClients.has(sessionId)) sseClients.set(sessionId, {});
     sseClients.get(sessionId).logs = res;
-    req.on('close', () => { if (sseClients.has(sessionId)) { delete sseClients.get(sessionId).logs; if (!Object.keys(sseClients.get(sessionId)).length) sseClients.delete(sessionId); } });
+    req.on('close', () => { const c = sseClients.get(sessionId); if (c) { delete c.logs; if (!Object.keys(c).length) sseClients.delete(sessionId); } });
 });
 
 function sendProgress(sessionId, data) {
@@ -138,38 +130,19 @@ function expandWildcards(text) {
 }
 
 // Backend handlers
+const A1111_SAMPLERS = { euler_ancestral: 'Euler a', euler: 'Euler', dpmpp_2m: 'DPM++ 2M', dpmpp_2m_sde: 'DPM++ 2M SDE', dpmpp_2s_ancestral: 'DPM++ 2S a', dpmpp_sde: 'DPM++ SDE', dpm_2: 'DPM2', dpm_2_ancestral: 'DPM2 a', heun: 'Heun', lms: 'LMS', ddim: 'DDIM', ddpm: 'DDPM', uni_pc: 'UniPC', lcm: 'LCM' };
+
 const backends = {
     async local(body, headers, sessionId) {
         const url = headers['x-local-url'] || 'http://127.0.0.1:7860';
-        
-        // A1111 sampler names - scheduler is part of sampler name
-        const getSamplerName = (sampler, scheduler) => {
-            const base = {
-                'euler_ancestral': 'Euler a', 'euler': 'Euler',
-                'dpmpp_2m': 'DPM++ 2M', 'dpmpp_2m_sde': 'DPM++ 2M SDE',
-                'dpmpp_2s_ancestral': 'DPM++ 2S a', 'dpmpp_sde': 'DPM++ SDE',
-                'dpm_2': 'DPM2', 'dpm_2_ancestral': 'DPM2 a',
-                'heun': 'Heun', 'lms': 'LMS', 'ddim': 'DDIM', 'ddpm': 'DDPM',
-                'uni_pc': 'UniPC', 'lcm': 'LCM'
-            }[sampler] || sampler || 'DPM++ 2M';
-            // Append scheduler suffix if not normal
-            if (scheduler === 'karras') return base + ' Karras';
-            if (scheduler === 'exponential') return base + ' Exponential';
-            return base;
-        };
+        const sampler = A1111_SAMPLERS[body.sampler] || body.sampler || 'DPM++ 2M';
+        const samplerName = body.scheduler === 'karras' ? sampler + ' Karras' : body.scheduler === 'exponential' ? sampler + ' Exponential' : sampler;
         
         const payload = {
-            prompt: expandWildcards(body.prompt),
-            negative_prompt: body.negative_prompt || '',
-            width: body.width || 512,
-            height: body.height || 768,
-            steps: body.steps || 25,
-            cfg_scale: body.cfg_scale || 7,
-            sampler_name: getSamplerName(body.sampler, body.scheduler),
-            seed: body.seed ?? -1,
-            batch_size: body.n || 1,
-            restore_faces: body.face_restore || false,
-            tiling: body.tiling || false
+            prompt: expandWildcards(body.prompt), negative_prompt: body.negative_prompt || '',
+            width: body.width || 512, height: body.height || 768, steps: body.steps || 25,
+            cfg_scale: body.cfg_scale || 7, sampler_name: samplerName, seed: body.seed ?? -1,
+            batch_size: body.n || 1, restore_faces: body.face_restore || false, tiling: body.tiling || false
         };
         
         // Hires fix
