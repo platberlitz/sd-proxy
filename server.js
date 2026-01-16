@@ -757,12 +757,27 @@ const backends = {
     async custom(body, headers, sessionId) {
         let customUrl = headers['x-custom-url'];
         if (!customUrl) throw new Error('Custom URL required');
-        if (!customUrl.includes('/images/generations') && !customUrl.includes('/chat/completions')) customUrl = customUrl.replace(/\/$/, '') + '/chat/completions';
         const apiKey = headers.authorization?.replace('Bearer ', '');
         const reqHeaders = { 'Content-Type': 'application/json' };
         if (apiKey) reqHeaders['Authorization'] = `Bearer ${apiKey}`;
         
-        // Build message content with reference images
+        const isImagesEndpoint = customUrl.includes('/images/generations');
+        const isChatEndpoint = customUrl.includes('/chat/completions');
+        if (!isImagesEndpoint && !isChatEndpoint) customUrl = customUrl.replace(/\/$/, '') + '/chat/completions';
+        
+        log(sessionId, `Custom backend request to: ${customUrl}`);
+        
+        if (isImagesEndpoint) {
+            const payload = { prompt: body.prompt, n: body.n || 1, size: `${body.width || 1024}x${body.height || 1024}` };
+            if (body.model) payload.model = body.model;
+            const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify(payload) });
+            const data = await res.json();
+            log(sessionId, `Custom backend response status: ${res.status}`);
+            if (data.data?.length) return { data: data.data.map(img => ({ url: img.url, b64_json: img.b64_json })) };
+            throw new Error(data.error?.message || JSON.stringify(data));
+        }
+        
+        // Chat completions format
         const content = [];
         if (body.reference_images?.length) {
             log(sessionId, `Adding ${body.reference_images.length} reference images to request`);
@@ -772,10 +787,10 @@ const backends = {
         }
         content.push({ type: 'text', text: body.prompt });
         
-        log(sessionId, `Custom backend request to: ${customUrl}`);
         const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify({ model: body.model || 'gpt-4o', messages: [{ role: 'user', content }] }) });
         const data = await res.json();
         log(sessionId, `Custom backend response status: ${res.status}`);
+        if (!res.ok) throw new Error(data.error?.message || data.error || JSON.stringify(data));
         const msg = data.choices?.[0]?.message || {};
         if (msg.images?.length) { log(sessionId, `Found ${msg.images.length} images in response`); return { data: msg.images.map(img => ({ url: img.image_url?.url || img.url })) }; }
         const msgContent = msg.content || '';
