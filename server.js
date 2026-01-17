@@ -137,14 +137,14 @@ const backends = {
         const url = headers['x-local-url'] || 'http://127.0.0.1:7860';
         const sampler = A1111_SAMPLERS[body.sampler] || body.sampler || 'DPM++ 2M';
         const samplerName = body.scheduler === 'karras' ? sampler + ' Karras' : body.scheduler === 'exponential' ? sampler + ' Exponential' : sampler;
-        
+
         const payload = {
             prompt: expandWildcards(body.prompt), negative_prompt: body.negative_prompt || '',
             width: body.width || 512, height: body.height || 768, steps: body.steps || 25,
             cfg_scale: body.cfg_scale || 7, sampler_name: samplerName, seed: body.seed ?? -1,
             batch_size: body.n || 1, restore_faces: body.face_restore || false, tiling: body.tiling || false
         };
-        
+
         // Hires fix
         if (body.hires_fix) {
             payload.enable_hr = true;
@@ -153,7 +153,7 @@ const backends = {
             payload.denoising_strength = body.denoising_strength || 0.7;
             payload.hr_second_pass_steps = body.hr_second_pass_steps || 0;
         }
-        
+
         // ControlNet
         if (body.controlnet) {
             payload.alwayson_scripts = {
@@ -170,12 +170,12 @@ const backends = {
                 }
             };
         }
-        
+
         // Regional prompting (via BREAK keyword)
         if (body.regional_prompts?.length) {
             payload.prompt = body.regional_prompts.map(r => r.prompt).join(' BREAK ');
         }
-        
+
         // Img2Img
         if (body.init_image && !body.mask) {
             payload.init_images = [body.init_image];
@@ -188,7 +188,7 @@ const backends = {
             const data = await res.json();
             return { data: (data.images || []).map(b64 => ({ b64_json: b64 })), info: data.info };
         }
-        
+
         // Inpainting
         if (body.mask) {
             payload.init_images = [body.init_image];
@@ -204,7 +204,7 @@ const backends = {
             const data = await res.json();
             return { data: (data.images || []).map(b64 => ({ b64_json: b64 })), info: data.info };
         }
-        
+
         // Outpainting
         if (body.outpaint) {
             payload.init_images = [body.init_image];
@@ -217,7 +217,7 @@ const backends = {
             const data = await res.json();
             return { data: (data.images || []).map(b64 => ({ b64_json: b64 })), info: data.info };
         }
-        
+
         // Track progress
         currentGeneration = { backend: 'local', startTime: Date.now() };
         const progressInterval = setInterval(async () => {
@@ -225,9 +225,9 @@ const backends = {
                 const progRes = await fetch(`${url}/sdapi/v1/progress`);
                 const prog = await progRes.json();
                 sendProgress(sessionId, { type: 'generation', progress: prog.progress, eta: prog.eta_relative, preview: prog.current_image });
-            } catch {}
+            } catch { }
         }, 1000);
-        
+
         try {
             const res = await fetch(`${url}/sdapi/v1/txt2img`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -241,51 +241,110 @@ const backends = {
             sendProgress(sessionId, { type: 'generation', progress: 1, done: true });
         }
     },
-    
+
     async comfyui(body, headers, sessionId) {
         const url = headers['x-local-url'] || 'http://127.0.0.1:8188';
-        
-        // User must provide workflow JSON exported from ComfyUI
-        if (!body.workflow) throw new Error('ComfyUI requires workflow JSON. Export from ComfyUI: Save (API Format)');
-        
-        let workflow = typeof body.workflow === 'string' ? JSON.parse(body.workflow) : body.workflow;
-        
-        // Replace placeholders in workflow if provided
-        const replacements = {
-            '%prompt%': body.prompt || '',
-            '%negative%': body.negative_prompt || '',
-            '%seed%': body.seed > 0 ? body.seed : Math.floor(Math.random() * 999999999),
-            '%width%': body.width || 512,
-            '%height%': body.height || 768,
-            '%steps%': body.steps || 25,
-            '%cfg%': body.cfg_scale || 7
+
+        // Sampler mapping
+        const comfySamplerMap = {
+            'euler_ancestral': 'euler_ancestral', 'euler_a': 'euler_ancestral', 'Euler a': 'euler_ancestral',
+            'euler': 'euler', 'Euler': 'euler',
+            'dpmpp_2m': 'dpmpp_2m', 'DPM++ 2M': 'dpmpp_2m', 'DPM++ 2M Karras': 'dpmpp_2m',
+            'dpmpp_sde': 'dpmpp_sde', 'DPM++ SDE': 'dpmpp_sde', 'DPM++ SDE Karras': 'dpmpp_sde',
+            'ddim': 'ddim', 'DDIM': 'ddim',
+            'lms': 'lms', 'heun': 'heun', 'uni_pc': 'uni_pc'
         };
-        
-        // Deep replace placeholders in workflow
-        const replaceInObj = (obj) => {
-            for (const key in obj) {
-                if (typeof obj[key] === 'string') {
-                    for (const [placeholder, value] of Object.entries(replacements)) {
-                        obj[key] = obj[key].replace(placeholder, value);
+        const comfySchedulerMap = {
+            'euler_ancestral': 'normal', 'euler_a': 'normal', 'Euler a': 'normal',
+            'dpmpp_2m': 'karras', 'DPM++ 2M Karras': 'karras',
+            'dpmpp_sde': 'karras', 'DPM++ SDE Karras': 'karras'
+        };
+
+        const seed = body.seed > 0 ? body.seed : Math.floor(Math.random() * 999999999);
+        const samplerName = comfySamplerMap[body.sampler] || 'euler_ancestral';
+        const schedulerName = comfySchedulerMap[body.sampler] || 'normal';
+        const denoise = body.denoise ?? 1.0;
+        const clipSkip = body.clip_skip ?? 1;
+        const model = body.model || 'model.safetensors';
+
+        let workflow;
+
+        // Check for custom workflow
+        if (body.workflow) {
+            workflow = typeof body.workflow === 'string' ? JSON.parse(body.workflow) : body.workflow;
+
+            // Replace placeholders in workflow
+            const replacements = {
+                '%prompt%': body.prompt || '',
+                '%negative%': body.negative_prompt || '',
+                '%seed%': String(seed),
+                '%width%': String(body.width || 512),
+                '%height%': String(body.height || 768),
+                '%steps%': String(body.steps || 25),
+                '%cfg%': String(body.cfg_scale || 7),
+                '%denoise%': String(denoise),
+                '%clip_skip%': String(clipSkip),
+                '%sampler%': samplerName,
+                '%scheduler%': schedulerName,
+                '%model%': model
+            };
+
+            const replaceInObj = (obj) => {
+                for (const key in obj) {
+                    if (typeof obj[key] === 'string') {
+                        for (const [placeholder, value] of Object.entries(replacements)) {
+                            obj[key] = obj[key].split(placeholder).join(value);
+                        }
+                    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                        replaceInObj(obj[key]);
                     }
-                } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-                    replaceInObj(obj[key]);
                 }
+            };
+            replaceInObj(workflow);
+
+            log(sessionId, `ComfyUI: Using custom workflow with ${Object.keys(workflow).length} nodes`);
+        } else {
+            // Default workflow
+            workflow = {
+                "3": {
+                    class_type: "KSampler",
+                    inputs: {
+                        seed: seed,
+                        steps: body.steps || 25,
+                        cfg: body.cfg_scale || 7,
+                        sampler_name: samplerName,
+                        scheduler: schedulerName,
+                        denoise: denoise,
+                        model: ["4", 0],
+                        positive: ["6", 0],
+                        negative: ["7", 0],
+                        latent_image: ["5", 0]
+                    }
+                },
+                "4": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: model } },
+                "5": { class_type: "EmptyLatentImage", inputs: { width: body.width || 512, height: body.height || 768, batch_size: 1 } },
+                "6": { class_type: "CLIPTextEncode", inputs: { text: body.prompt || '', clip: clipSkip > 1 ? ["10", 0] : ["4", 1] } },
+                "7": { class_type: "CLIPTextEncode", inputs: { text: body.negative_prompt || '', clip: clipSkip > 1 ? ["10", 0] : ["4", 1] } },
+                "8": { class_type: "VAEDecode", inputs: { samples: ["3", 0], vae: ["4", 2] } },
+                "9": { class_type: "SaveImage", inputs: { filename_prefix: "sdproxy", images: ["8", 0] } }
+            };
+
+            if (clipSkip > 1) {
+                workflow["10"] = { class_type: "CLIPSetLastLayer", inputs: { stop_at_clip_layer: -clipSkip, clip: ["4", 1] } };
             }
-        };
-        replaceInObj(workflow);
-        
-        log(sessionId, `ComfyUI: Queueing workflow with ${Object.keys(workflow).length} nodes`);
-        
+
+            log(sessionId, `ComfyUI: Using default workflow - sampler=${samplerName}, scheduler=${schedulerName}, steps=${body.steps || 25}, cfg=${body.cfg_scale || 7}, denoise=${denoise}, clip_skip=${clipSkip}`);
+        }
+
         const queueRes = await fetch(`${url}/prompt`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: workflow })
         });
         const queueData = await queueRes.json();
         if (!queueData.prompt_id) throw new Error(queueData.error || 'Failed to queue workflow');
-        
+
         log(sessionId, `ComfyUI: Queued as ${queueData.prompt_id}`);
-        
+
         // Poll for completion
         for (let i = 0; i < 300; i++) {
             await new Promise(r => setTimeout(r, 1000));
@@ -311,7 +370,7 @@ const backends = {
         }
         throw new Error('Timeout waiting for ComfyUI');
     },
-    
+
     async pollinations(body) {
         const seed = body.seed > 0 ? body.seed : Math.floor(Math.random() * 999999);
         const params = new URLSearchParams({ width: body.width || 512, height: body.height || 768, seed, nologo: 'true' });
@@ -319,7 +378,7 @@ const backends = {
         const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(body.prompt)}?${params}`;
         return { data: [{ url }] };
     },
-    
+
     async nanogpt(body, headers) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('NanoGPT requires API key');
@@ -330,11 +389,11 @@ const backends = {
         });
         return await res.json();
     },
-    
+
     async novelai(body, headers, sessionId) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('NovelAI requires API key');
-        
+
         const nai = body.nai || {};
         const model = nai.model || 'nai-diffusion-4-5-curated';
         const params = {
@@ -356,9 +415,9 @@ const backends = {
             quality_toggle: nai.quality_toggle !== false,
             variety_plus: nai.variety_plus || false
         };
-        
+
         log(sessionId, `NovelAI request: model=${model}, ${params.width}x${params.height}, steps=${params.steps}`);
-        
+
         const res = await fetch('https://image.novelai.net/ai/generate-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
@@ -369,24 +428,24 @@ const backends = {
                 parameters: params
             })
         });
-        
+
         if (!res.ok) {
             const errText = await res.text();
             throw new Error(`NovelAI error ${res.status}: ${errText}`);
         }
-        
+
         // NovelAI returns a zip file with PNG images
         const zipBuffer = await res.arrayBuffer();
         const bytes = new Uint8Array(zipBuffer);
-        
+
         // Find PNG signatures in the zip
         const images = [];
         for (let i = 0; i < bytes.length - 8; i++) {
-            if (bytes[i] === 0x89 && bytes[i+1] === 0x50 && bytes[i+2] === 0x4E && bytes[i+3] === 0x47) {
+            if (bytes[i] === 0x89 && bytes[i + 1] === 0x50 && bytes[i + 2] === 0x4E && bytes[i + 3] === 0x47) {
                 // Find PNG end
                 let end = i + 8;
                 while (end < bytes.length - 8) {
-                    if (bytes[end] === 0x49 && bytes[end+1] === 0x45 && bytes[end+2] === 0x4E && bytes[end+3] === 0x44) {
+                    if (bytes[end] === 0x49 && bytes[end + 1] === 0x45 && bytes[end + 2] === 0x4E && bytes[end + 3] === 0x44) {
                         end += 8; // Include IEND chunk
                         break;
                     }
@@ -398,18 +457,18 @@ const backends = {
                 i = end - 1;
             }
         }
-        
+
         log(sessionId, `NovelAI returned ${images.length} image(s)`);
         return { data: images };
     },
-    
+
     async gemini(body, headers, sessionId) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('Gemini requires API key');
-        
+
         const opts = body.gemini || {};
         const model = opts.model || 'gemini-2.5-flash-image';
-        
+
         // Build parts array with reference images and prompt
         const parts = [];
         if (body.reference_images?.length) {
@@ -422,9 +481,9 @@ const backends = {
             }
         }
         parts.push({ text: body.prompt });
-        
+
         log(sessionId, `Gemini request: model=${model}, prompt=${(body.prompt || '').substring(0, 50)}...`);
-        
+
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -436,15 +495,15 @@ const backends = {
                 }
             })
         });
-        
+
         if (!res.ok) {
             const errText = await res.text();
             throw new Error(`Gemini error ${res.status}: ${errText}`);
         }
-        
+
         const data = await res.json();
         const images = [];
-        
+
         for (const candidate of data.candidates || []) {
             for (const part of candidate.content?.parts || []) {
                 if (part.inlineData?.data) {
@@ -452,19 +511,19 @@ const backends = {
                 }
             }
         }
-        
+
         log(sessionId, `Gemini returned ${images.length} image(s)`);
         return { data: images };
     },
-    
+
     async naistera(body, headers, sessionId) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('Naistera requires API token');
-        
+
         const opts = body.naistera || {};
         const n = body.n || 1;
         const varietyWords = ['', ', detailed', ', beautiful', ', stunning', ', elegant', ', graceful', ', vibrant', ', atmospheric'];
-        
+
         // Limit prompt length to prevent timeouts (Naistera seems to struggle with very long prompts)
         const maxPromptLength = 500;
         let basePrompt = body.prompt;
@@ -472,7 +531,7 @@ const backends = {
             basePrompt = basePrompt.substring(0, maxPromptLength).trim();
             log(sessionId, `Naistera prompt truncated to ${maxPromptLength} chars`);
         }
-        
+
         // Generate all requests with staggered timing to avoid 409 errors
         const results = [];
         for (let i = 0; i < Math.min(n, 4); i++) {
@@ -481,34 +540,34 @@ const backends = {
                 const variety = varietyWords[i % varietyWords.length];
                 variedPrompt = basePrompt + variety;
             }
-            
+
             const params = new URLSearchParams({ token: apiKey });
             if (opts.aspect_ratio) params.set('aspect_ratio', opts.aspect_ratio);
             if (opts.preset) params.set('preset', opts.preset);
-            
+
             // Add aggressive cache-busting with random component
             const timestamp = Date.now();
             const random = Math.random().toString(36).substring(2);
             params.set('_t', `${timestamp}_${i}_${random}`);
             params.set('_nocache', '1');
-            
+
             const url = `https://naistera.org/prompt/${encodeURIComponent(variedPrompt)}?${params}`;
-            log(sessionId, `Naistera request ${i+1}: ${url.substring(0, 80)}...`);
-            
+            log(sessionId, `Naistera request ${i + 1}: ${url.substring(0, 80)}...`);
+
             // Add delay between requests to avoid rate limiting (409 errors)
             if (i > 0) {
                 await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
-                log(sessionId, `Naistera: waited 2s before request ${i+1}`);
+                log(sessionId, `Naistera: waited 2s before request ${i + 1}`);
             }
-            
+
             const controller = new AbortController();
             const timeoutId = setTimeout(() => {
                 controller.abort();
-                log(sessionId, `Naistera request ${i+1} timed out after 2 minutes`);
+                log(sessionId, `Naistera request ${i + 1} timed out after 2 minutes`);
             }, 120000); // 2 minutes
-            
+
             try {
-                const res = await fetch(url, { 
+                const res = await fetch(url, {
                     signal: controller.signal,
                     headers: {
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -518,36 +577,36 @@ const backends = {
                     }
                 });
                 clearTimeout(timeoutId);
-                
+
                 if (!res.ok) {
                     if (res.status === 409) {
                         throw new Error(`Naistera rate limit (409) - try reducing batch size or waiting longer between requests`);
                     }
                     throw new Error(`Naistera error: ${res.status}`);
                 }
-                
+
                 const buffer = await res.arrayBuffer();
                 const b64 = Buffer.from(buffer).toString('base64');
                 results.push({ b64_json: b64 });
-                
-                log(sessionId, `Naistera request ${i+1} completed successfully`);
+
+                log(sessionId, `Naistera request ${i + 1} completed successfully`);
             } catch (error) {
                 clearTimeout(timeoutId);
                 if (error.name === 'AbortError') {
-                    throw new Error(`Naistera request ${i+1} was aborted (timeout)`);
+                    throw new Error(`Naistera request ${i + 1} was aborted (timeout)`);
                 }
                 throw error;
             }
         }
-        
+
         log(sessionId, `Naistera returned ${results.length} images`);
         return { data: results };
     },
-    
+
     async civitai(body, headers, sessionId) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('CivitAI requires API token');
-        
+
         const opts = body.civitai || {};
         const input = {
             model: opts.model || 'urn:air:sd1:checkpoint:civitai:4201@130072',
@@ -564,13 +623,13 @@ const backends = {
             },
             batchSize: body.n || 1
         };
-        
+
         if (opts.additionalNetworks) {
             input.additionalNetworks = opts.additionalNetworks;
         }
-        
+
         log(sessionId, `CivitAI request: model=${input.model.split(':').pop()}, ${input.params.width}x${input.params.height}`);
-        
+
         // Use CivitAI's actual generation endpoint
         const res = await fetch('https://civitai.com/api/v1/jobs', {
             method: 'POST',
@@ -583,30 +642,30 @@ const backends = {
                 input
             })
         });
-        
+
         if (!res.ok) {
             const error = await res.text();
             throw new Error(`CivitAI error: ${res.status} - ${error}`);
         }
-        
+
         const data = await res.json();
         const jobId = data.jobId || data.jobs?.[0]?.jobId;
         if (!jobId) throw new Error('No job ID returned');
-        
+
         log(sessionId, `CivitAI job started: ${jobId}`);
-        
+
         // Poll for completion (10 minute timeout)
         for (let i = 0; i < 120; i++) {
             await new Promise(r => setTimeout(r, 5000)); // 5 second intervals
-            
+
             const statusRes = await fetch(`https://civitai.com/api/v1/jobs/${jobId}`, {
                 headers: { 'Authorization': `Bearer ${apiKey}` }
             });
-            
+
             if (!statusRes.ok) continue;
-            
+
             const job = await statusRes.json();
-            
+
             if (job.result?.available && job.result?.blobUrl) {
                 log(sessionId, `CivitAI completed: ${jobId}`);
                 return {
@@ -616,19 +675,19 @@ const backends = {
                     }]
                 };
             }
-            
+
             if (job.scheduled === false && !job.result?.available) {
                 throw new Error('CivitAI generation failed');
             }
         }
-        
+
         throw new Error('CivitAI timeout (10 minutes)');
     },
-    
+
     async pixai(body, headers, sessionId) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('PixAI requires API key');
-        
+
         const opts = body.pixai || {};
         const params = {
             prompts: body.prompt,
@@ -637,20 +696,20 @@ const backends = {
             height: body.height || 1280,
             batchSize: Math.min(body.n || 1, 4)
         };
-        
+
         // Core params
         if (body.negative_prompt) params.negativePrompts = body.negative_prompt;
         if (body.steps) params.samplingSteps = body.steps;
         if (body.cfg_scale) params.cfgScale = body.cfg_scale;
         if (body.seed) params.seed = body.seed;
         if (opts.sampler) params.samplingMethod = opts.sampler;
-        
+
         // LoRAs
         if (body.loras?.length) {
             params.lora = {};
             body.loras.forEach(l => { params.lora[l.id] = l.weight || 0.7; });
         }
-        
+
         // Quality boosters
         if (opts.enableADetailer) params.enableADetailer = true;
         if (opts.upscale > 1) {
@@ -660,27 +719,27 @@ const backends = {
             if (opts.upscaleDenoisingSteps) params.upscaleDenoisingSteps = opts.upscaleDenoisingSteps;
             if (opts.enableTile) params.enableTile = true;
         }
-        
+
         // Img2Img
         if (opts.mediaUrl) {
             params.mediaUrl = opts.mediaUrl;
             if (opts.strength) params.strength = opts.strength;
         }
-        
+
         // Prompt helper
         if (opts.promptHelper) params.promptHelper = { enable: true };
-        
+
         log(sessionId, `PixAI request: model=${params.modelId}, ${params.width}x${params.height}, sampler=${params.samplingMethod || 'default'}`);
-        
+
         const createRes = await fetch('https://api.pixai.art/v1/task', {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
             body: JSON.stringify({ parameters: params })
         });
         const createData = await createRes.json();
         if (!createData.id) throw new Error(createData.message || 'Failed to create task');
-        
+
         log(sessionId, `PixAI task created: ${createData.id}`);
-        
+
         for (let i = 0; i < 120; i++) {
             await new Promise(r => setTimeout(r, 2000));
             const statusRes = await fetch(`https://api.pixai.art/v1/task/${createData.id}`, { headers: { 'Authorization': `Bearer ${apiKey}` } });
@@ -693,7 +752,7 @@ const backends = {
         }
         throw new Error('Timeout');
     },
-    
+
     async stability(body, headers) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('Stability AI requires API key');
@@ -708,7 +767,7 @@ const backends = {
         const data = await res.json();
         return { data: (data.artifacts || []).map(a => ({ b64_json: a.base64 })) };
     },
-    
+
     async replicate(body, headers) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('Replicate requires API key');
@@ -730,7 +789,7 @@ const backends = {
         }
         throw new Error('Timeout');
     },
-    
+
     async fal(body, headers) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('Fal.ai requires API key');
@@ -742,7 +801,7 @@ const backends = {
         const data = await res.json();
         return { data: (data.images || []).map(img => ({ url: img.url })) };
     },
-    
+
     async together(body, headers) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('Together AI requires API key');
@@ -753,20 +812,20 @@ const backends = {
         });
         return await res.json();
     },
-    
+
     async custom(body, headers, sessionId) {
         let customUrl = headers['x-custom-url'];
         if (!customUrl) throw new Error('Custom URL required');
         const apiKey = headers.authorization?.replace('Bearer ', '');
         const reqHeaders = { 'Content-Type': 'application/json' };
         if (apiKey) reqHeaders['Authorization'] = `Bearer ${apiKey}`;
-        
+
         const isImagesEndpoint = customUrl.includes('/images/generations');
         const isChatEndpoint = customUrl.includes('/chat/completions');
         if (!isImagesEndpoint && !isChatEndpoint) customUrl = customUrl.replace(/\/$/, '') + '/chat/completions';
-        
+
         log(sessionId, `Custom backend request to: ${customUrl}`);
-        
+
         if (isImagesEndpoint) {
             const payload = { prompt: body.prompt, n: body.n || 1, size: `${body.width || 1024}x${body.height || 1024}` };
             if (body.model) payload.model = body.model;
@@ -776,7 +835,7 @@ const backends = {
             if (data.data?.length) return { data: data.data.map(img => ({ url: img.url, b64_json: img.b64_json })) };
             throw new Error(data.error?.message || JSON.stringify(data));
         }
-        
+
         // Chat completions format
         const content = [];
         if (body.reference_images?.length) {
@@ -786,7 +845,7 @@ const backends = {
             }
         }
         content.push({ type: 'text', text: body.prompt });
-        
+
         const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify({ model: body.model || 'gpt-4o', messages: [{ role: 'user', content }] }) });
         const data = await res.json();
         log(sessionId, `Custom backend response status: ${res.status}`);
@@ -896,30 +955,30 @@ app.post('/api/civitai/download', async (req, res) => {
     try {
         const { url: modelUrl, filename } = req.body;
         const localUrl = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
-        
+
         // Get model path from A1111
         const optRes = await fetch(`${localUrl}/sdapi/v1/options`);
         const options = await optRes.json();
         const modelDir = options.outdir_samples?.replace('/outputs', '/models/Stable-diffusion') || path.join(MODELS_DIR, 'checkpoints');
-        
+
         const filePath = path.join(modelDir, filename || 'model.safetensors');
         const response = await fetch(modelUrl);
         const fileStream = fs.createWriteStream(filePath);
-        
+
         const totalSize = parseInt(response.headers.get('content-length'), 10);
         let downloaded = 0;
-        
+
         response.body.on('data', chunk => {
             downloaded += chunk.length;
             sendProgress({ type: 'download', progress: downloaded / totalSize, filename });
         });
-        
+
         await new Promise((resolve, reject) => {
             response.body.pipe(fileStream);
             response.body.on('error', reject);
             fileStream.on('finish', resolve);
         });
-        
+
         res.json({ success: true, path: filePath });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -929,7 +988,7 @@ app.post('/api/enhance-prompt', async (req, res) => {
     try {
         const { prompt, style } = req.body;
         const apiKey = req.headers.authorization?.replace('Bearer ', '');
-        
+
         // Use Pollinations text API (free)
         const enhancePrompt = `Enhance this image generation prompt with more details and artistic descriptions. Keep it concise (under 200 words). Style: ${style || 'detailed'}. Original: "${prompt}"`;
         const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(enhancePrompt)}`);
@@ -946,7 +1005,7 @@ app.post('/api/xyz-plot', async (req, res) => {
         const xValues = xAxis?.values || [''];
         const yValues = yAxis?.values || [''];
         const zValues = zAxis?.values || [''];
-        
+
         for (const z of zValues) {
             for (const y of yValues) {
                 for (const x of xValues) {
@@ -954,7 +1013,7 @@ app.post('/api/xyz-plot', async (req, res) => {
                     if (xAxis?.param) params[xAxis.param] = x;
                     if (yAxis?.param) params[yAxis.param] = y;
                     if (zAxis?.param) params[zAxis.param] = z;
-                    
+
                     sendProgress({ type: 'xyz', x, y, z, status: 'generating' });
                     const handler = backends[params.backend || 'local'];
                     const result = await handler(params, req.headers);
@@ -995,13 +1054,13 @@ app.post('/v1/images/generations', async (req, res) => {
         log(sessionId, `Generation request: backend=${backend}, model=${req.body.model || 'default'}`);
         log(sessionId, `Prompt: ${(req.body.prompt || '').substring(0, 100)}...`);
         if (req.body.reference_images?.length) log(sessionId, `Reference images: ${req.body.reference_images.length}`);
-        
+
         const handler = backends[backend];
         if (!handler) throw new Error('Unknown backend: ' + backend);
         const result = await handler(req.body, req.headers, sessionId);
-        
+
         log(sessionId, `Generation complete: ${result.data?.length || 0} images`);
-        
+
         // Track costs
         const cost = req.body.cost || 0;
         if (cost > 0) {
@@ -1009,7 +1068,7 @@ app.post('/v1/images/generations', async (req, res) => {
             costs.byBackend[backend] = (costs.byBackend[backend] || 0) + cost;
             saveData('costs', costs);
         }
-        
+
         // Add to history
         if (result.data?.length) {
             const entry = { id: Date.now(), prompt: req.body.prompt, negative: req.body.negative_prompt, params: req.body, images: result.data, backend, date: new Date().toISOString() };
@@ -1017,7 +1076,7 @@ app.post('/v1/images/generations', async (req, res) => {
             history = history.slice(0, 500);
             saveData('history', history);
         }
-        
+
         res.json(result);
     } catch (e) { log(sessionId, `Generation error: ${e.message}`, 'error'); res.status(500).json({ error: e.message }); }
 });
