@@ -171,6 +171,24 @@ const backends = {
             };
         }
 
+        // IP-Adapter Face - extract facial features only from reference image
+        if (body.ip_adapter) {
+            payload.alwayson_scripts = payload.alwayson_scripts || {};
+            payload.alwayson_scripts.controlnet = {
+                args: [{
+                    enabled: true,
+                    module: "ip-adapter_face_id",
+                    model: body.ip_adapter.model || "ip-adapter-faceid-portrait_sd15",
+                    weight: body.ip_adapter.weight || 0.7,
+                    image: body.ip_adapter.image,
+                    resize_mode: "Crop and Resize",
+                    control_mode: "Balanced",
+                    pixel_perfect: true
+                }]
+            };
+            log(sessionId, `IP-Adapter Face: model=${body.ip_adapter.model}, weight=${body.ip_adapter.weight}`);
+        }
+
         // Regional prompting (via BREAK keyword)
         if (body.regional_prompts?.length) {
             payload.prompt = body.regional_prompts.map(r => r.prompt).join(' BREAK ');
