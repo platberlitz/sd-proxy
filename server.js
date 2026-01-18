@@ -1097,6 +1097,20 @@ app.post('/v1/images/generations', async (req, res) => {
 
         res.json(result);
     } catch (e) { log(sessionId, `Generation error: ${e.message}`, 'error'); res.status(500).json({ error: e.message }); }
+
+    // Proxy endpoint for A1111 ControlNet models
+    app.get('/api/proxy/controlnet/model_list', async (req, res) => {
+        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        try {
+            const proxyRes = await fetch(`${url}/controlnet/model_list`);
+            if (!proxyRes.ok) throw new Error(`A1111 error ${proxyRes.status}`);
+            const data = await proxyRes.json();
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message, model_list: [] });
+        }
+    });
+
 });
 
 // Queue endpoints
