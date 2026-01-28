@@ -649,14 +649,14 @@ const backends = {
         log(sessionId, `CivitAI request: model=${input.model.split(':').pop()}, ${input.params.width}x${input.params.height}`);
 
         // Use CivitAI's actual generation endpoint
-        const res = await fetch('https://civitai.com/api/v1/jobs', {
+        const res = await fetch('https://civitai.com/api/v1/consumer/jobs', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                type: 'txt2img',
+                $type: 'textToImage',
                 input
             })
         });
@@ -667,25 +667,36 @@ const backends = {
         }
 
         const data = await res.json();
-        const jobId = data.jobId || data.jobs?.[0]?.jobId;
-        if (!jobId) throw new Error('No job ID returned');
+        const jobToken = data.token;
+        if (!jobToken) throw new Error(`No job token returned. Response: ${JSON.stringify(data)}`);
 
-        log(sessionId, `CivitAI job started: ${jobId}`);
+        log(sessionId, `CivitAI job started: ${jobToken}`);
 
         // Poll for completion (10 minute timeout)
+        let lastError = null;
         for (let i = 0; i < 120; i++) {
             await new Promise(r => setTimeout(r, 5000)); // 5 second intervals
 
-            const statusRes = await fetch(`https://civitai.com/api/v1/jobs/${jobId}`, {
+            const statusRes = await fetch(`https://civitai.com/api/v1/consumer/jobs?token=${jobToken}`, {
                 headers: { 'Authorization': `Bearer ${apiKey}` }
             });
 
-            if (!statusRes.ok) continue;
+            if (!statusRes.ok) {
+                lastError = `Status check failed: ${statusRes.status}`;
+                log(sessionId, `CivitAI poll error: ${statusRes.status}`, 'warn');
+                continue;
+            }
 
-            const job = await statusRes.json();
+            const jobs = await statusRes.json();
+            const job = jobs?.[0];
 
-            if (job.result?.available && job.result?.blobUrl) {
-                log(sessionId, `CivitAI completed: ${jobId}`);
+            if (!job) {
+                lastError = 'No job found in response';
+                continue;
+            }
+
+            if (job.result?.blobUrl) {
+                log(sessionId, `CivitAI completed: ${jobToken}`);
                 return {
                     data: [{
                         url: job.result.blobUrl,
@@ -694,12 +705,12 @@ const backends = {
                 };
             }
 
-            if (job.scheduled === false && !job.result?.available) {
-                throw new Error('CivitAI generation failed');
+            if (job.scheduled === false && !job.result) {
+                throw new Error(`CivitAI generation failed: ${job.message || 'Unknown error'}`);
             }
         }
 
-        throw new Error('CivitAI timeout (10 minutes)');
+        throw new Error(`CivitAI timeout (10 minutes). Last error: ${lastError || 'Still processing'}`);
     },
 
     async pixai(body, headers, sessionId) {
