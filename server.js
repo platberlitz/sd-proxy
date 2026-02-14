@@ -45,14 +45,10 @@ app.use(auth);
 app.use(express.static('public'));
 
 // Data storage
-const DATA_DIR = path.join(__dirname, 'data');
 const MODELS_DIR = path.join(__dirname, 'models');
-[DATA_DIR, MODELS_DIR].forEach(d => fs.existsSync(d) || fs.mkdirSync(d));
-const getDataFile = name => path.join(DATA_DIR, `${name}.json`);
-const loadData = (name, def = []) => { try { return JSON.parse(fs.readFileSync(getDataFile(name))); } catch { return def; } };
-const saveData = (name, data) => fs.writeFileSync(getDataFile(name), JSON.stringify(data, null, 2));
+[MODELS_DIR].forEach(d => fs.existsSync(d) || fs.mkdirSync(d));
 
-let queue = [], history = loadData('history', []), favorites = loadData('favorites', []), folders = loadData('folders', []), presets = loadData('presets', []), templates = loadData('templates', []), costs = loadData('costs', { total: 0, byBackend: {} }), currentGeneration = null;
+let queue = [], currentGeneration = null;
 
 // SSE clients
 const sseClients = new Map();
@@ -1070,10 +1066,7 @@ app.post('/api/batch-file', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Templates endpoints
-app.get('/api/templates', (req, res) => res.json(templates));
-app.post('/api/templates', (req, res) => { templates.push({ id: Date.now(), ...req.body }); saveData('templates', templates); res.json({ success: true }); });
-app.delete('/api/templates/:id', (req, res) => { templates = templates.filter(t => t.id != req.params.id); saveData('templates', templates); res.json({ success: true }); });
+// Templates endpoints removed - now in localStorage
 
 // Main generation endpoint
 app.post('/v1/images/generations', async (req, res) => {
@@ -1089,22 +1082,6 @@ app.post('/v1/images/generations', async (req, res) => {
         const result = await handler(req.body, req.headers, sessionId);
 
         log(sessionId, `Generation complete: ${result.data?.length || 0} images`);
-
-        // Track costs
-        const cost = req.body.cost || 0;
-        if (cost > 0) {
-            costs.total += cost;
-            costs.byBackend[backend] = (costs.byBackend[backend] || 0) + cost;
-            saveData('costs', costs);
-        }
-
-        // Add to history
-        if (result.data?.length) {
-            const entry = { id: Date.now(), prompt: req.body.prompt, negative: req.body.negative_prompt, params: req.body, images: result.data, backend, date: new Date().toISOString() };
-            history.unshift(entry);
-            history = history.slice(0, 500);
-            saveData('history', history);
-        }
 
         res.json(result);
     } catch (e) { log(sessionId, `Generation error: ${e.message}`, 'error'); res.status(500).json({ error: e.message }); }
@@ -1142,40 +1119,7 @@ app.post('/api/queue/process', async (req, res) => {
     res.json(results);
 });
 
-// History endpoints
-app.get('/api/history', (req, res) => {
-    const { search, folder, limit = 50, offset = 0 } = req.query;
-    let filtered = history;
-    if (search) filtered = filtered.filter(h => h.prompt?.toLowerCase().includes(search.toLowerCase()));
-    if (folder) filtered = filtered.filter(h => h.folder === folder);
-    res.json({ total: filtered.length, items: filtered.slice(offset, offset + limit) });
-});
-app.delete('/api/history/:id', (req, res) => { history = history.filter(h => h.id != req.params.id); saveData('history', history); res.json({ success: true }); });
-app.delete('/api/history', (req, res) => { history = []; saveData('history', history); res.json({ success: true }); });
-
-// Favorites endpoints
-app.get('/api/favorites', (req, res) => res.json(favorites));
-app.post('/api/favorites', (req, res) => { favorites.unshift({ id: Date.now(), ...req.body }); saveData('favorites', favorites); res.json({ success: true }); });
-app.delete('/api/favorites/:id', (req, res) => { favorites = favorites.filter(f => f.id != req.params.id); saveData('favorites', favorites); res.json({ success: true }); });
-
-// Folders endpoints
-app.get('/api/folders', (req, res) => res.json(folders));
-app.post('/api/folders', (req, res) => { folders.push({ id: Date.now(), name: req.body.name }); saveData('folders', folders); res.json({ success: true }); });
-app.delete('/api/folders/:id', (req, res) => { folders = folders.filter(f => f.id != req.params.id); saveData('folders', folders); res.json({ success: true }); });
-app.post('/api/history/:id/folder', (req, res) => {
-    const item = history.find(h => h.id == req.params.id);
-    if (item) { item.folder = req.body.folder; saveData('history', history); }
-    res.json({ success: true });
-});
-
-// Presets endpoints
-app.get('/api/presets', (req, res) => res.json(presets));
-app.post('/api/presets', (req, res) => { presets.push({ id: Date.now(), ...req.body }); saveData('presets', presets); res.json({ success: true }); });
-app.delete('/api/presets/:id', (req, res) => { presets = presets.filter(p => p.id != req.params.id); saveData('presets', presets); res.json({ success: true }); });
-
-// Costs endpoint
-app.get('/api/costs', (req, res) => res.json(costs));
-app.delete('/api/costs', (req, res) => { costs = { total: 0, byBackend: {} }; saveData('costs', costs); res.json({ success: true }); });
+// History, favorites, folders, presets, costs endpoints removed - now in localStorage
 
 // PNG metadata extraction
 app.post('/api/metadata', (req, res) => {

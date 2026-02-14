@@ -961,6 +961,24 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <script>
 const $=id=>document.getElementById(id);
 let settings=JSON.parse(localStorage.getItem('sdproxy_settings')||'{}');
+let localHistory=JSON.parse(localStorage.getItem('sdproxy_history')||'[]');
+let localFavorites=JSON.parse(localStorage.getItem('sdproxy_favorites')||'[]');
+let localPresets=JSON.parse(localStorage.getItem('sdproxy_presets')||'[]');
+let localTemplates=JSON.parse(localStorage.getItem('sdproxy_templates')||'[]');
+let localCosts=JSON.parse(localStorage.getItem('sdproxy_costs')||'{"total":0,"byBackend":{}}');
+let localFolders=JSON.parse(localStorage.getItem('sdproxy_folders')||'[]');
+function saveLocalHistory(){safeSetItem('sdproxy_history',JSON.stringify(localHistory));}
+function saveLocalFavorites(){safeSetItem('sdproxy_favorites',JSON.stringify(localFavorites));}
+function saveLocalPresets(){safeSetItem('sdproxy_presets',JSON.stringify(localPresets));}
+function saveLocalTemplates(){safeSetItem('sdproxy_templates',JSON.stringify(localTemplates));}
+function saveLocalCosts(){safeSetItem('sdproxy_costs',JSON.stringify(localCosts));}
+function saveLocalFolders(){safeSetItem('sdproxy_folders',JSON.stringify(localFolders));}
+function safeSetItem(key,val){try{localStorage.setItem(key,val);}catch(e){if(e.name==='QuotaExceededError'){localHistory=localHistory.slice(0,Math.max(50,localHistory.length-100));localStorage.setItem('sdproxy_history',JSON.stringify(localHistory));try{localStorage.setItem(key,val);}catch{toast('Storage full - oldest history trimmed');}}}}
+function createThumbnail(imgSrc){return new Promise(r=>{if(!imgSrc||imgSrc.startsWith('http')){r(imgSrc);return;}const img=new Image();img.onload=()=>{const max=150;const scale=Math.min(max/img.width,max/img.height,1);const c=document.createElement('canvas');c.width=img.width*scale;c.height=img.height*scale;c.getContext('2d').drawImage(img,0,0,c.width,c.height);r(c.toDataURL('image/jpeg',0.6));};img.onerror=()=>r(null);img.src=imgSrc.startsWith('data:')?imgSrc:'data:image/png;base64,'+imgSrc;});}
+async function addToLocalHistory(prompt,negative,params,images,backend){const thumbs=[];for(const img of images){const src=img.url||(img.b64_json?.startsWith('data:')?img.b64_json:'data:image/png;base64,'+img.b64_json);const thumb=await createThumbnail(src);if(thumb)thumbs.push({url:img.url||undefined,thumb:img.url?undefined:thumb});}
+const cleanParams={...params};delete cleanParams.init_image;delete cleanParams.mask;delete cleanParams.reference_images;delete cleanParams.controlnet;delete cleanParams.workflow;
+localHistory.unshift({id:Date.now(),prompt,negative,params:cleanParams,images:thumbs,backend,date:new Date().toISOString()});localHistory=localHistory.slice(0,500);saveLocalHistory();}
+function addToLocalCosts(backend,cost){if(!cost||cost<=0)return;localCosts.total+=cost;localCosts.byBackend[backend]=(localCosts.byBackend[backend]||0)+cost;saveLocalCosts();}
 let currentImage=null,currentIndex=0,allImages=[],brushSize=30,inpaintImg=null,maskCanvas=null,maskCtx=null,drawing=false;
 let img2imgData=null,outpaintData=null,upscaleData=null,controlnetData=null,controlnetProcessed=null;
 let refImages=[];
@@ -1323,6 +1341,9 @@ async function generate(){
             $('result').innerHTML=allImages.map((u,i)=>`<div class="img-card"><img src="${u}" onclick="showModal('${u}')" ondblclick="openLightbox('${u}')" oncontextmenu="showContextMenu(event,'${u}','${pr.slice(0,200)}')">
                 <div class="info-overlay">${body.prompt.slice(0,50)}...</div>
                 <div class="actions"><button onclick="showModal('${u}')">View</button><button onclick="sendToImg2ImgUrl('${u}')">i2i</button><button onclick="addFavorite('${u}')">⭐</button></div></div>`).join('');
+            addToLocalHistory(body.prompt,body.negative_prompt,body,data.data,$('backend').value);
+            addToLocalCosts($('backend').value,body.cost||0);
+            loadHistory();
         }
     }catch(e){$('status').textContent='❌ '+e.message;toast('Error: '+e.message);}
     btn.disabled=false;$('interruptBtn').style.display='none';stopGenTimer();
@@ -1363,6 +1384,7 @@ async function generateImg2Img(){
     try{const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify(body)});const data=await res.json();
     if(data.error)throw new Error(data.error);
     $('img2imgResult').innerHTML=data.data.map(d=>`<div class="img-card"><img src="data:image/png;base64,${d.b64_json}" onclick="showModal(this.src)"></div>`).join('');$('status').textContent='✅ Done';
+    addToLocalHistory(body.prompt,body.negative_prompt,body,data.data,$('backend').value);loadHistory();
     }catch(e){$('status').textContent='❌ '+e.message;}
 }
 
@@ -1384,6 +1406,7 @@ async function generateInpaint(){
     try{const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify(body)});const data=await res.json();
     if(data.error)throw new Error(data.error);
     $('inpaintResult').innerHTML=data.data.map(d=>`<div class="img-card"><img src="data:image/png;base64,${d.b64_json}" onclick="showModal(this.src)"></div>`).join('');$('status').textContent='✅ Done';
+    addToLocalHistory(body.prompt,body.negative_prompt,body,data.data,$('backend').value);loadHistory();
     }catch(e){$('status').textContent='❌ '+e.message;}
 }
 
@@ -1396,6 +1419,7 @@ async function generateOutpaint(){
     try{const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify(body)});const data=await res.json();
     if(data.error)throw new Error(data.error);
     $('outpaintResult').innerHTML=data.data.map(d=>`<div class="img-card"><img src="data:image/png;base64,${d.b64_json}" onclick="showModal(this.src)"></div>`).join('');$('status').textContent='✅ Done';
+    addToLocalHistory(body.prompt,body.negative_prompt,body,data.data,$('backend').value);loadHistory();
     }catch(e){$('status').textContent='❌ '+e.message;}
 }
 
@@ -1425,6 +1449,7 @@ async function generateWithControlNet(){
     try{const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify(body)});const data=await res.json();
     if(data.error)throw new Error(data.error);
     $('controlnetResult').innerHTML=data.data.map(d=>`<div class="img-card"><img src="data:image/png;base64,${d.b64_json}" onclick="showModal(this.src)"></div>`).join('');$('status').textContent='✅ Done';
+    addToLocalHistory(body.prompt,body.negative_prompt,body,data.data,$('backend').value);loadHistory();
     }catch(e){$('status').textContent='❌ '+e.message;}
 }
 
@@ -1580,19 +1605,24 @@ async function processQueue(){$('status').textContent='⏳ Processing...';const 
 
 // History
 let currentFolder=null;
-async function loadHistory(){const search=$('historySearch')?.value||'';const res=await fetch(`/api/history?search=${encodeURIComponent(search)}&folder=${currentFolder||''}`);const data=await res.json();
-const count=data.items?.length||0;$('historyCount').textContent=count||'';$('historyCount').style.display=count?'':'none';
-$('historyGrid').innerHTML=data.items.map(h=>{const url=h.images[0]?.url||'data:image/png;base64,'+h.images[0]?.b64_json;const p=(h.prompt||'').replace(/'/g,"\\'");return`<div class="history-item" onclick="showModal('${url}','${p.slice(0,100)}')" ondblclick="openLightbox('${url}')" oncontextmenu="showContextMenu(event,'${url}','${p.slice(0,200)}')" title="${p.slice(0,200)}"><img src="${url}"><button class="btn-sm" style="position:absolute;bottom:2px;right:2px;padding:1px 4px" onclick="event.stopPropagation();navigator.clipboard.writeText('${p}');toast('Copied!')" title="Copy prompt">📋</button></div>`;}).join('')||'<p style="color:var(--muted)">No history</p>';}
-async function clearHistory(){if(confirm('Clear all?')){await fetch('/api/history',{method:'DELETE'});loadHistory();}}
+function loadHistory(){const search=($('historySearch')?.value||'').toLowerCase();
+let filtered=localHistory;
+if(search)filtered=filtered.filter(h=>h.prompt?.toLowerCase().includes(search));
+if(currentFolder)filtered=filtered.filter(h=>h.folder===currentFolder);
+const items=filtered.slice(0,50);
+const count=items.length;$('historyCount').textContent=count||'';$('historyCount').style.display=count?'':'none';
+$('historyGrid').innerHTML=items.map(h=>{const img=h.images[0];const url=img?.url||img?.thumb||'';const p=(h.prompt||'').replace(/'/g,"\\'");return`<div class="history-item" onclick="showModal('${url}','${p.slice(0,100)}')" ondblclick="openLightbox('${url}')" oncontextmenu="showContextMenu(event,'${url}','${p.slice(0,200)}')" title="${p.slice(0,200)}"><img src="${url}"><button class="btn-sm" style="position:absolute;bottom:2px;right:2px;padding:1px 4px" onclick="event.stopPropagation();navigator.clipboard.writeText('${p}');toast('Copied!')" title="Copy prompt">📋</button></div>`;}).join('')||'<p style="color:var(--muted)">No history</p>';}
+function clearHistory(){if(confirm('Clear all?')){localHistory=[];saveLocalHistory();loadHistory();}}
+function deleteHistoryItem(id){localHistory=localHistory.filter(h=>h.id!=id);saveLocalHistory();loadHistory();}
 function filterFolder(f){currentFolder=f;document.querySelectorAll('.folder-item').forEach(el=>el.classList.remove('active'));event.target.classList.add('active');loadHistory();}
-async function createFolder(){const name=prompt('Folder name:');if(name){await fetch('/api/folders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});loadFolders();}}
-async function loadFolders(){const res=await fetch('/api/folders');const f=await res.json();$('folderList').innerHTML=f.map(x=>`<span class="folder-item" onclick="filterFolder('${x.name}')">${x.name}</span>`).join('');}
+function createFolder(){const name=prompt('Folder name:');if(name){localFolders.push({id:Date.now(),name});saveLocalFolders();loadFolders();}}
+function loadFolders(){$('folderList').innerHTML=localFolders.map(x=>`<span class="folder-item" onclick="filterFolder('${x.name}')">${x.name}</span>`).join('');}
 
 // Favorites/Gallery with tags
 let favoriteTags=JSON.parse(localStorage.getItem('sdproxy_fav_tags')||'{}');
-async function loadFavorites(){const res=await fetch('/api/favorites');const f=await res.json();
+function loadFavorites(){
 const tagFilter=($('galleryTagFilter')?.value||'').toLowerCase();
-let filtered=tagFilter?f.filter(x=>(favoriteTags[x.id]||[]).some(t=>t.toLowerCase().includes(tagFilter))):f;
+let filtered=tagFilter?localFavorites.filter(x=>(favoriteTags[x.id]||[]).some(t=>t.toLowerCase().includes(tagFilter))):localFavorites.slice();
 if($('gallerySort')?.value==='oldest')filtered=filtered.reverse();
 const count=filtered.length;$('galleryCount').textContent=count||'';$('galleryCount').style.display=count?'':'none';
 allImages=filtered.map(x=>x.url);
@@ -1600,8 +1630,8 @@ const allTags=[...new Set(Object.values(favoriteTags).flat())];
 $('galleryTags').innerHTML=allTags.map(t=>`<span class="tag" onclick="$('galleryTagFilter').value='${t}';loadFavorites()">${t}</span>`).join('');
 $('galleryGrid').innerHTML=filtered.map(x=>{const tags=favoriteTags[x.id]||[];return`<div class="img-card"><img src="${x.url}" onclick="showModal('${x.url}')" ondblclick="openLightbox('${x.url}')" oncontextmenu="showContextMenu(event,'${x.url}','')"><div class="actions"><button onclick="tagFavorite(${x.id})" class="btn-sm">🏷️</button><button onclick="removeFavorite(${x.id})" class="btn-danger btn-sm">×</button></div>${tags.length?`<div style="font-size:10px;color:var(--muted)">${tags.join(', ')}</div>`:''}</div>`;}).join('')||'<p style="color:var(--muted)">No favorites</p>';}
 function tagFavorite(id){const current=(favoriteTags[id]||[]).join(', ');const tags=prompt('Tags (comma-separated):',current);if(tags!==null){favoriteTags[id]=tags.split(',').map(t=>t.trim()).filter(t=>t);localStorage.setItem('sdproxy_fav_tags',JSON.stringify(favoriteTags));loadFavorites();}}
-async function addFavorite(url){await fetch('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});loadFavorites();toast('Added to favorites');}
-async function removeFavorite(id){await fetch('/api/favorites/'+id,{method:'DELETE'});loadFavorites();}
+function addFavorite(url){localFavorites.unshift({id:Date.now(),url});saveLocalFavorites();loadFavorites();toast('Added to favorites');}
+function removeFavorite(id){localFavorites=localFavorites.filter(f=>f.id!=id);saveLocalFavorites();loadFavorites();}
 function toggleFavorite(){if(currentImage){addFavorite(currentImage);}}
 async function downloadAllFavorites(){if(!allImages.length)return toast('No favorites');toast('Downloading...');for(let i=0;i<allImages.length;i++){const a=document.createElement('a');a.href=allImages[i];a.download=`favorite-${i+1}.png`;a.click();await new Promise(r=>setTimeout(r,200));}toast('Download complete');}
 
@@ -1612,20 +1642,20 @@ function stopSlideshow(){if(slideshowInterval){clearInterval(slideshowInterval);
 const origCloseLightbox=closeLightbox;closeLightbox=()=>{stopSlideshow();$('lightbox').classList.remove('show');}
 
 // Presets
-async function loadPresets(){const res=await fetch('/api/presets');const p=await res.json();
-$('presetList').innerHTML=p.map(x=>`<div class="preset-item" onclick='applyPreset(${JSON.stringify(x).replace(/'/g,"&apos;")})'><span>${x.name}</span><button class="btn-sm btn-danger" onclick="event.stopPropagation();deletePreset(${x.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">No presets</p>';}
-async function savePreset(){const name=prompt('Preset name:');if(!name)return;const p={name,prompt:$('prompt').value,negative:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg:+$('cfg').value,sampler:$('sampler').value,scheduler:$('scheduler').value,style:$('style').value};
-await fetch('/api/presets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});loadPresets();}
+function loadPresets(){
+$('presetList').innerHTML=localPresets.map(x=>`<div class="preset-item" onclick='applyPreset(${JSON.stringify(x).replace(/'/g,"&apos;")})'><span>${x.name}</span><button class="btn-sm btn-danger" onclick="event.stopPropagation();deletePreset(${x.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">No presets</p>';}
+function savePreset(){const name=prompt('Preset name:');if(!name)return;const p={id:Date.now(),name,prompt:$('prompt').value,negative:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg:+$('cfg').value,sampler:$('sampler').value,scheduler:$('scheduler').value,style:$('style').value};
+localPresets.push(p);saveLocalPresets();loadPresets();}
 function applyPreset(p){$('prompt').value=p.prompt||'';$('negative').value=p.negative||'';$('width').value=p.width||512;$('height').value=p.height||768;$('steps').value=p.steps||25;$('cfg').value=p.cfg||7;if(p.sampler)$('sampler').value=p.sampler;if(p.scheduler)$('scheduler').value=p.scheduler;if(p.style)$('style').value=p.style;updatePromptTags();}
-async function deletePreset(id){await fetch('/api/presets/'+id,{method:'DELETE'});loadPresets();}
+function deletePreset(id){localPresets=localPresets.filter(p=>p.id!=id);saveLocalPresets();loadPresets();}
 
 // Templates
-async function loadTemplates(){const res=await fetch('/api/templates');const t=await res.json();
-$('templateList').innerHTML=t.map(x=>`<div class="template-item" onclick="applyTemplate('${x.content.replace(/'/g,"\\'")}')"><span>${x.name}: ${x.content.slice(0,40)}...</span><button class="btn-sm btn-danger" onclick="event.stopPropagation();deleteTemplate(${x.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">No templates</p>';}
-async function saveTemplate(){const name=$('newTemplateName').value,content=$('newTemplateContent').value;if(!name||!content)return;
-await fetch('/api/templates',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,content})});$('newTemplateName').value='';$('newTemplateContent').value='';loadTemplates();}
+function loadTemplates(){
+$('templateList').innerHTML=localTemplates.map(x=>`<div class="template-item" onclick="applyTemplate('${x.content.replace(/'/g,"\\'")}')"><span>${x.name}: ${x.content.slice(0,40)}...</span><button class="btn-sm btn-danger" onclick="event.stopPropagation();deleteTemplate(${x.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">No templates</p>';}
+function saveTemplate(){const name=$('newTemplateName').value,content=$('newTemplateContent').value;if(!name||!content)return;
+localTemplates.push({id:Date.now(),name,content});saveLocalTemplates();$('newTemplateName').value='';$('newTemplateContent').value='';loadTemplates();}
 function applyTemplate(t){$('prompt').value+=' '+t;updatePromptTags();}
-async function deleteTemplate(id){await fetch('/api/templates/'+id,{method:'DELETE'});loadTemplates();}
+function deleteTemplate(id){localTemplates=localTemplates.filter(t=>t.id!=id);saveLocalTemplates();loadTemplates();}
 function showTemplates(){$('templatesModal').classList.add('show');$('templatesModalList').innerHTML=$('templateList').innerHTML;}
 
 // Models
@@ -1647,8 +1677,8 @@ await fetch('/api/civitai/download',{method:'POST',headers:getHeaders(),body:JSO
 $('downloadProgress').textContent='✅ Downloaded: '+file.name;}catch(e){$('downloadProgress').textContent='❌ '+e.message;}}
 
 // Costs
-async function loadCosts(){const res=await fetch('/api/costs');const c=await res.json();$('costDisplay').innerHTML=`Total: $${c.total.toFixed(4)}<br>${Object.entries(c.byBackend).map(([k,v])=>`${k}: $${v.toFixed(4)}`).join('<br>')}`;}
-async function resetCosts(){if(confirm('Reset?')){await fetch('/api/costs',{method:'DELETE'});loadCosts();}}
+function loadCosts(){$('costDisplay').innerHTML=`Total: $${localCosts.total.toFixed(4)}<br>${Object.entries(localCosts.byBackend).map(([k,v])=>`${k}: $${v.toFixed(4)}`).join('<br>')}`;}
+function resetCosts(){if(confirm('Reset?')){localCosts={total:0,byBackend:{}};saveLocalCosts();loadCosts();}}
 
 // Modal actions
 function downloadImage(){if(!currentImage)return;const a=document.createElement('a');a.href=currentImage;a.download='image.png';a.click();}
@@ -1659,7 +1689,7 @@ function sendToControlNet(){if(!currentImage)return;controlnetData=currentImage;
 async function generateVariation(){if(!currentImage)return;$('status').textContent='🔄 Generating variation...';img2imgData=currentImage;
 const body={prompt:$('prompt').value,negative_prompt:$('negative').value,init_image:currentImage,strength:0.3,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value};
 try{const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify(body)});const data=await res.json();
-if(data.data?.[0]){const url='data:image/png;base64,'+data.data[0].b64_json;allImages.push(url);showModal(url);}$('status').textContent='✅ Done';}catch(e){$('status').textContent='❌ '+e.message;}}
+if(data.data?.[0]){const url='data:image/png;base64,'+data.data[0].b64_json;allImages.push(url);showModal(url);addToLocalHistory(body.prompt,body.negative_prompt,body,data.data,$('backend').value);loadHistory();}$('status').textContent='✅ Done';}catch(e){$('status').textContent='❌ '+e.message;}}
 async function showMetadata(){if(!currentImage)return;try{const res=await fetch('/api/metadata',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:currentImage})});const d=await res.json();alert(d.raw||'No metadata');}catch(e){alert('Error');}}
 
 // Export/Import
