@@ -850,9 +850,24 @@ const backends = {
         if (opts.aspect_ratio) input.aspect_ratio = opts.aspect_ratio;
         if (opts.resolution) input.resolution = opts.resolution;
         if (opts.output_format) input.output_format = opts.output_format;
-        // For image-to-image models, pass reference images as image_input URLs
+        // For image-to-image models, upload base64 images to get hosted URLs
         if (body.reference_images?.length) {
-            input.image_input = body.reference_images;
+            log(sessionId, `Uploading ${body.reference_images.length} reference images to Kie.ai`);
+            const uploadedUrls = [];
+            for (const img of body.reference_images) {
+                const uploadRes = await fetch('https://kieai.redpandaai.co/api/file-base64-upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    body: JSON.stringify({ base64Data: img, uploadPath: 'images', fileName: `ref-${Date.now()}.png` })
+                });
+                const uploadData = await uploadRes.json();
+                if (!uploadData.data?.fileUrl) {
+                    throw new Error(uploadData.msg || 'Failed to upload reference image');
+                }
+                uploadedUrls.push(uploadData.data.fileUrl);
+                log(sessionId, `Uploaded reference image: ${uploadData.data.fileUrl}`);
+            }
+            input.image_input = uploadedUrls;
         }
         // Pass through any extra input params the user sets
         if (opts.extra_input) Object.assign(input, opts.extra_input);
