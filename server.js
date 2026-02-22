@@ -871,7 +871,14 @@ const backends = {
         }
         content.push({ type: 'text', text: body.prompt });
 
-        const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify({ model: body.model || 'gpt-4o', messages: [{ role: 'user', content }] }) });
+        const isGeminiImage = /gemini.*image|gemini.*preview/i.test(body.model);
+        const payload = { model: body.model || 'gpt-4o', messages: [{ role: 'user', content }] };
+        if (isGeminiImage) {
+            payload.response_modalities = ['TEXT', 'IMAGE'];
+            payload.generationConfig = { responseModalities: ['TEXT', 'IMAGE'] };
+            log(sessionId, `Gemini image model detected, adding responseModalities`);
+        }
+        const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify(payload) });
         const data = await res.json();
         log(sessionId, `Custom backend response status: ${res.status}`);
         if (!res.ok) throw new Error(data.error?.message || data.error || JSON.stringify(data));
