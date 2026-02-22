@@ -861,11 +861,13 @@ const backends = {
                     body: JSON.stringify({ base64Data: img, uploadPath: 'images', fileName: `ref-${Date.now()}.png` })
                 });
                 const uploadData = await uploadRes.json();
-                if (!uploadData.data?.fileUrl) {
-                    throw new Error(uploadData.msg || 'Failed to upload reference image');
+                log(sessionId, `Kie.ai upload response: ${JSON.stringify(uploadData)}`);
+                const url = uploadData.data?.fileUrl || uploadData.data?.downloadUrl || uploadData.data?.url || uploadData.fileUrl || uploadData.url;
+                if (!url) {
+                    throw new Error(`Upload failed: ${JSON.stringify(uploadData)}`);
                 }
-                uploadedUrls.push(uploadData.data.fileUrl);
-                log(sessionId, `Uploaded reference image: ${uploadData.data.fileUrl}`);
+                uploadedUrls.push(url);
+                log(sessionId, `Uploaded reference image: ${url}`);
             }
             input.image_input = uploadedUrls;
         }
