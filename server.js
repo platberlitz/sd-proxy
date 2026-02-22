@@ -878,7 +878,10 @@ const backends = {
             payload.generationConfig = { responseModalities: ['TEXT', 'IMAGE'] };
             log(sessionId, `Gemini image model detected, adding responseModalities`);
         }
-        const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify(payload) });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000);
+        const res = await fetch(customUrl, { method: 'POST', headers: reqHeaders, body: JSON.stringify(payload), signal: controller.signal });
+        clearTimeout(timeoutId);
         const data = await res.json();
         log(sessionId, `Custom backend response status: ${res.status}`);
         if (!res.ok) throw new Error(data.error?.message || data.error || JSON.stringify(data));
