@@ -838,6 +838,72 @@ const backends = {
         return await res.json();
     },
 
+    async kie(body, headers, sessionId) {
+        const apiKey = headers.authorization?.replace('Bearer ', '');
+        if (!apiKey) throw new Error('Kie.ai requires API key');
+
+        const opts = body.kie || {};
+        const model = opts.model || body.model || 'google/nano-banana';
+
+        // Build the input payload (varies by model but common fields)
+        const input = { prompt: body.prompt };
+        if (opts.aspect_ratio) input.aspect_ratio = opts.aspect_ratio;
+        if (opts.resolution) input.resolution = opts.resolution;
+        if (opts.output_format) input.output_format = opts.output_format;
+        // For image-to-image models, pass reference images as image_input URLs
+        if (body.reference_images?.length) {
+            input.image_input = body.reference_images;
+        }
+        // Pass through any extra input params the user sets
+        if (opts.extra_input) Object.assign(input, opts.extra_input);
+
+        const payload = { model, input };
+
+        log(sessionId, `Kie.ai request: model=${model}`);
+
+        // Create task
+        const createRes = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify(payload)
+        });
+        const createData = await createRes.json();
+        if (createData.code !== 200 || !createData.data?.taskId) {
+            throw new Error(createData.msg || createData.message || 'Failed to create task');
+        }
+
+        const taskId = createData.data.taskId;
+        log(sessionId, `Kie.ai task created: ${taskId}`);
+
+        // Poll for results (up to ~5 minutes, every 3 seconds)
+        for (let i = 0; i < 100; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+            const statusRes = await fetch(
+                `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`,
+                { headers: { 'Authorization': `Bearer ${apiKey}` } }
+            );
+            const status = await statusRes.json();
+            const state = status.data?.state;
+
+            log(sessionId, `Kie.ai task ${taskId}: ${state}`);
+
+            if (state === 'success' && status.data?.resultJson) {
+                const result = JSON.parse(status.data.resultJson);
+                const urls = result.resultUrls || [];
+                if (urls.length) {
+                    log(sessionId, `Kie.ai completed: ${urls.length} images`);
+                    return { data: urls.map(url => ({ url })) };
+                }
+                throw new Error('Task completed but no images returned');
+            }
+            if (state === 'fail') {
+                throw new Error(status.data?.failMsg || 'Generation failed');
+            }
+            // Continue polling for: waiting, queuing, generating
+        }
+        throw new Error('Timeout waiting for Kie.ai task');
+    },
+
     async custom(body, headers, sessionId) {
         let customUrl = headers['x-custom-url'];
         if (!customUrl) throw new Error('Custom URL required');

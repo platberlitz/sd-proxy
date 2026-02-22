@@ -142,7 +142,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <div><label>Backend</label><select id="backend" onchange="onBackendChange();saveSettings()">
 <option value="local">Local A1111</option><option value="comfyui">ComfyUI</option><option value="pollinations">Pollinations (Free)</option>
 <option value="nanogpt">NanoGPT</option><option value="gemini">Gemini (Nano Banana)</option><option value="novelai">NovelAI</option><option value="naistera">Naistera</option><option value="civitai">CivitAI</option><option value="pixai">PixAI</option><option value="stability">Stability AI</option>
-<option value="replicate">Replicate</option><option value="fal">Fal.ai</option><option value="together">Together AI</option><option value="custom">Custom</option>
+<option value="replicate">Replicate</option><option value="fal">Fal.ai</option><option value="together">Together AI</option><option value="kie">Kie.ai</option><option value="custom">Custom</option>
 </select></div>
 <div id="apiKeyRow"><label>API Key</label><div style="display:flex;gap:4px"><input type="password" id="apiKey" placeholder="If required" onkeydown="if(event.key==='Enter')fetchBackendModels()" onchange="saveSettings()" style="flex:1"><button class="btn-sm" id="fetchModelsBtn" onclick="fetchBackendModels()">Fetch Models</button></div></div>
 <div id="modelRow"><label>Model</label><div id="modelContainer"><select id="model"><option value="">Select model</option></select></div></div>
@@ -417,6 +417,53 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 <option value="16:9">16:9 Landscape (1344x768)</option>
 <option value="4:3">4:3 (896x1152)</option>
 <option value="3:4">3:4 (1152x896)</option>
+</select></div>
+</div>
+</div>
+
+<div id="kieSettings" style="display:none" class="mt card">
+<h3>Kie.ai Settings</h3>
+<div class="row-2">
+<div><label>Model</label><select id="kieModel">
+<optgroup label="Google">
+<option value="google/nano-banana">Nano Banana</option>
+<option value="google/nano-banana-edit">Nano Banana Edit</option>
+<option value="nano-banana-pro">Nano Banana Pro</option>
+<option value="google/imagen4-fast">Imagen4 Fast</option>
+<option value="google/imagen4">Imagen4</option>
+<option value="google/imagen4-ultra">Imagen4 Ultra</option>
+</optgroup>
+<optgroup label="Flux-2">
+<option value="flux-2/pro-text-to-image">Flux-2 Pro</option>
+<option value="flux-2/flex-text-to-image">Flux-2 Flex</option>
+</optgroup>
+<optgroup label="GPT Image">
+<option value="gpt-4o-image">GPT-4o Image</option>
+<option value="gpt-image-1.5-text-to-image">GPT Image 1.5</option>
+</optgroup>
+<optgroup label="Other">
+<option value="grok-imagine/text-to-image">Grok Imagine</option>
+<option value="qwen/text-to-image">Qwen</option>
+<option value="seedream/4.5-text-to-image">Seedream 4.5</option>
+<option value="ideogram/character">Ideogram Character</option>
+<option value="z-image">Z-Image</option>
+</optgroup>
+</select></div>
+<div><label>Aspect Ratio</label><select id="kieAspect">
+<option value="">Default (1:1)</option>
+<option value="4:3">4:3</option><option value="3:4">3:4</option>
+<option value="16:9">16:9</option><option value="9:16">9:16</option>
+<option value="3:2">3:2</option><option value="2:3">2:3</option>
+</select></div>
+</div>
+<div class="row-2">
+<div><label>Resolution</label><select id="kieResolution">
+<option value="1K">1K</option>
+<option value="2K">2K</option>
+</select></div>
+<div><label>Output Format</label><select id="kieFormat">
+<option value="png">PNG</option>
+<option value="jpg">JPG</option>
 </select></div>
 </div>
 </div>
@@ -1091,8 +1138,8 @@ function onBackendChange(){
     
     // Hide API key and model for local backends and pixai (has own model input)
     const noApiKey=['local','comfyui','pollinations'];
-    const noModel=['local','comfyui','pixai','pollinations'];
-    const noFetch=['local','comfyui','pixai','pollinations','naistera'];
+    const noModel=['local','comfyui','pixai','pollinations','kie'];
+    const noFetch=['local','comfyui','pixai','pollinations','naistera','kie'];
     $('apiKeyRow').style.display=noApiKey.includes(b)?'none':'';
     $('modelRow').style.display=noModel.includes(b)?'none':'';
     $('fetchModelsBtn').style.display=noFetch.includes(b)?'none':'';
@@ -1104,6 +1151,7 @@ function onBackendChange(){
     $('naisteraSettings').style.display=b==='naistera'?'block':'none';
     $('civitaiSettings').style.display=b==='civitai'?'block':'none';
     $('geminiSettings').style.display=b==='gemini'?'block':'none';
+    $('kieSettings').style.display=b==='kie'?'block':'none';
     $('extraInstructionsRow').style.display=['gemini','custom'].includes(b)?'block':'none';
     if(b==='novelai')updateNaiCost();
     
@@ -1121,6 +1169,7 @@ function onBackendChange(){
         replicate:{width:1,height:1,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
         fal:{width:1,height:1,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:0,refImages:0},
         together:{width:1,height:1,steps:1,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:1,hires:0,negative:1,refImages:0},
+        kie:{width:0,height:0,steps:0,cfg:0,seed:0,sampler:0,scheduler:0,style:1,batch:0,hires:0,negative:0,refImages:1},
         custom:{width:1,height:1,steps:1,cfg:1,seed:1,sampler:1,scheduler:1,style:1,batch:1,hires:1,negative:1,refImages:1}
     };
     const s=supports[b]||supports.custom;
@@ -1181,7 +1230,7 @@ function deleteComfyWorkflow(){const i=$('comfyWorkflowSelect').value;if(i==='')
 async function fetchBackendModels(){
     const backend=$('backend').value;
     const apiKey=$('apiKey').value;
-    const noModelBackends=['local','comfyui','pixai','pollinations'];
+    const noModelBackends=['local','comfyui','pixai','pollinations','kie'];
     
     const setSelect=(html)=>{$('modelContainer').innerHTML=`<select id="model" style="width:100%">${html}</select>`;};
     const setInput=(placeholder)=>{$('modelContainer').innerHTML=`<input id="model" placeholder="${placeholder}" style="width:100%">`;};
@@ -1329,6 +1378,7 @@ async function generate(){
         }
         if($('backend').value==='naistera'){body.naistera={aspect_ratio:$('naisteraAspect').value,preset:$('naisteraPreset').value};body.n=+$('naisteraCount').value;}
         if($('backend').value==='gemini'){body.gemini={model:$('geminiModel').value,aspect_ratio:$('geminiAspect').value};}
+        if($('backend').value==='kie'){body.kie={model:$('kieModel').value,aspect_ratio:$('kieAspect').value,resolution:$('kieResolution').value,output_format:$('kieFormat').value};}
         if($('backend').value==='comfyui'&&$('comfyWorkflow').value){try{body.workflow=JSON.parse($('comfyWorkflow').value);}catch(e){throw new Error('Invalid workflow JSON');}}
         if(body.seed<0)delete body.seed;
         const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify(body)});
