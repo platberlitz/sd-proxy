@@ -934,9 +934,7 @@ const backends = {
         const opts = body.midjourney || {};
         const taskType = opts.taskType || 'imagine';
 
-        const input = { prompt: body.prompt };
-
-        // MJ-specific parameters
+        const input = { message: body.prompt };
         if (opts.speed) input.speed = opts.speed;
         if (opts.version) input.version = opts.version;
         if (opts.aspectRatio) input.aspectRatio = opts.aspectRatio;
