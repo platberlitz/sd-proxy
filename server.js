@@ -921,6 +921,93 @@ const backends = {
         throw new Error('Timeout waiting for Kie.ai task');
     },
 
+    async midjourney(body, headers, sessionId) {
+        const apiKey = headers.authorization?.replace('Bearer ', '');
+        if (!apiKey) throw new Error('Midjourney (Kie.ai) requires API key');
+
+        const opts = body.midjourney || {};
+        const taskType = opts.taskType || 'imagine';
+
+        const input = { prompt: body.prompt };
+
+        // MJ-specific parameters
+        if (opts.speed) input.speed = opts.speed;
+        if (opts.version) input.version = opts.version;
+        if (opts.aspectRatio) input.aspectRatio = opts.aspectRatio;
+        if (opts.stylization != null) input.stylization = +opts.stylization;
+        if (opts.weirdness != null) input.weirdness = +opts.weirdness;
+        if (opts.variety != null) input.variety = +opts.variety;
+        if (opts.enableTranslation) input.enableTranslation = opts.enableTranslation;
+        if (opts.waterMark) input.waterMark = opts.waterMark;
+
+        // For blend — upload base64 images to get hosted URLs
+        if (taskType === 'blend' && body.reference_images?.length) {
+            const uploadedUrls = [];
+            for (const img of body.reference_images) {
+                const uploadRes = await fetch('https://kieai.redpandaai.co/api/file-base64-upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    body: JSON.stringify({ base64Data: img, uploadPath: 'images', fileName: `ref-${Date.now()}.png` })
+                });
+                const uploadData = await uploadRes.json();
+                const url = uploadData.data?.fileUrl || uploadData.data?.downloadUrl || uploadData.data?.url || uploadData.fileUrl || uploadData.url;
+                if (!url) throw new Error(`Upload failed: ${JSON.stringify(uploadData)}`);
+                uploadedUrls.push(url);
+            }
+            input.imageUrls = uploadedUrls;
+        }
+
+        // For upscale/variation — need parent taskId and index
+        if ((taskType === 'upscale' || taskType === 'variation') && opts.parentTaskId) {
+            input.taskId = opts.parentTaskId;
+            if (opts.index) input.index = opts.index;
+        }
+
+        const payload = { taskType, ...input };
+
+        log(sessionId, `Midjourney request: taskType=${taskType}, speed=${input.speed || 'fast'}`);
+
+        // Create task
+        const createRes = await fetch('https://api.kie.ai/api/v1/mj/createTask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify(payload)
+        });
+        const createData = await createRes.json();
+        if (createData.code !== 200 || !createData.data?.taskId) {
+            throw new Error(createData.msg || createData.message || 'Failed to create MJ task');
+        }
+
+        const taskId = createData.data.taskId;
+        log(sessionId, `Midjourney task created: ${taskId}`);
+
+        // Poll for results (up to ~10 minutes, every 5 seconds)
+        for (let i = 0; i < 120; i++) {
+            await new Promise(r => setTimeout(r, 5000));
+            const statusRes = await fetch(
+                `https://api.kie.ai/api/v1/mj/queryTask?taskId=${taskId}`,
+                { headers: { 'Authorization': `Bearer ${apiKey}` } }
+            );
+            const status = await statusRes.json();
+            const state = status.data?.status;
+
+            log(sessionId, `Midjourney task ${taskId}: ${state}`);
+
+            if (state === 'SUCCESS') {
+                const urls = status.data?.resultUrls || (status.data?.resultUrl ? [status.data.resultUrl] : []);
+                if (urls.length) {
+                    log(sessionId, `Midjourney completed: ${urls.length} images`);
+                    return { data: urls.map(url => ({ url })) };
+                }
+                throw new Error('Task completed but no images returned');
+            }
+            if (state === 'FAILED' || state === 'FAIL') {
+                throw new Error(status.data?.failReason || status.data?.failMsg || 'MJ generation failed');
+            }
+        }
+        throw new Error('Timeout waiting for Midjourney task');
+    },
+
     async custom(body, headers, sessionId) {
         let customUrl = headers['x-custom-url'];
         if (!customUrl) throw new Error('Custom URL required');
