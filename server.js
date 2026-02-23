@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const session = require('express-session');
+const { execSync } = require('child_process');
 const app = express();
 
 // Auth config
@@ -40,6 +41,11 @@ app.post('/login', express.urlencoded({ extended: true }), (req, res) => {
 });
 
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
+
+function requireAuth(req, res, next) {
+    if (req.session.loggedIn) return next();
+    res.status(401).json({ error: 'Authentication required' });
+}
 
 app.use(auth);
 app.use(express.static('public'));
@@ -239,7 +245,7 @@ const backends = {
                 const progRes = await fetch(`${url}/sdapi/v1/progress`);
                 const prog = await progRes.json();
                 sendProgress(sessionId, { type: 'generation', progress: prog.progress, eta: prog.eta_relative, preview: prog.current_image });
-            } catch { }
+            } catch { /* progress poll — expected to fail between requests */ }
         }, 1000);
 
         try {
@@ -1159,6 +1165,7 @@ app.post('/api/controlnet/preprocess', async (req, res) => {
 app.post('/api/civitai/download', async (req, res) => {
     try {
         const { url: modelUrl, filename } = req.body;
+        const sessionId = req.headers['x-session-id'];
         const localUrl = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
 
         // Get model path from A1111
@@ -1175,7 +1182,7 @@ app.post('/api/civitai/download', async (req, res) => {
 
         response.body.on('data', chunk => {
             downloaded += chunk.length;
-            sendProgress({ type: 'download', progress: downloaded / totalSize, filename });
+            sendProgress(sessionId, { type: 'download', progress: downloaded / totalSize, filename });
         });
 
         await new Promise((resolve, reject) => {
@@ -1206,6 +1213,7 @@ app.post('/api/enhance-prompt', async (req, res) => {
 app.post('/api/xyz-plot', async (req, res) => {
     try {
         const { baseParams, xAxis, yAxis, zAxis } = req.body;
+        const sessionId = req.headers['x-session-id'];
         const results = [];
         const xValues = xAxis?.values || [''];
         const yValues = yAxis?.values || [''];
@@ -1219,9 +1227,10 @@ app.post('/api/xyz-plot', async (req, res) => {
                     if (yAxis?.param) params[yAxis.param] = y;
                     if (zAxis?.param) params[zAxis.param] = z;
 
-                    sendProgress({ type: 'xyz', x, y, z, status: 'generating' });
+                    sendProgress(sessionId, { type: 'xyz', x, y, z, status: 'generating' });
                     const handler = backends[params.backend || 'local'];
-                    const result = await handler(params, req.headers);
+                    if (!handler) throw new Error('Unknown backend: ' + (params.backend || 'local'));
+                    const result = await handler(params, req.headers, sessionId);
                     results.push({ x, y, z, images: result.data });
                 }
             }
@@ -1234,12 +1243,14 @@ app.post('/api/xyz-plot', async (req, res) => {
 app.post('/api/batch-file', async (req, res) => {
     try {
         const { prompts, baseParams } = req.body;
+        const sessionId = req.headers['x-session-id'];
         const results = [];
         for (let i = 0; i < prompts.length; i++) {
-            sendProgress({ type: 'batch', current: i + 1, total: prompts.length });
+            sendProgress(sessionId, { type: 'batch', current: i + 1, total: prompts.length });
             const params = { ...baseParams, prompt: prompts[i] };
             const handler = backends[params.backend || 'local'];
-            const result = await handler(params, req.headers);
+            if (!handler) throw new Error('Unknown backend: ' + (params.backend || 'local'));
+            const result = await handler(params, req.headers, sessionId);
             results.push({ prompt: prompts[i], images: result.data });
         }
         res.json({ results });
@@ -1265,26 +1276,25 @@ app.post('/v1/images/generations', async (req, res) => {
 
         res.json(result);
     } catch (e) { log(sessionId, `Generation error: ${e.message}`, 'error'); res.status(500).json({ error: e.message }); }
+});
 
-    // Proxy endpoint for A1111 ControlNet models
-    app.get('/api/proxy/controlnet/model_list', async (req, res) => {
-        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
-        try {
-            const proxyRes = await fetch(`${url}/controlnet/model_list`);
-            if (!proxyRes.ok) throw new Error(`A1111 error ${proxyRes.status}`);
-            const data = await proxyRes.json();
-            res.json(data);
-        } catch (e) {
-            res.status(500).json({ error: e.message, model_list: [] });
-        }
-    });
-
+// Proxy endpoint for A1111 ControlNet models
+app.get('/api/proxy/controlnet/model_list', async (req, res) => {
+    const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+    try {
+        const proxyRes = await fetch(`${url}/controlnet/model_list`);
+        if (!proxyRes.ok) throw new Error(`A1111 error ${proxyRes.status}`);
+        const data = await proxyRes.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ error: e.message, model_list: [] });
+    }
 });
 
 // Queue endpoints
 app.get('/api/queue', (req, res) => res.json(queue));
 app.post('/api/queue', (req, res) => { queue.push({ id: Date.now(), ...req.body }); res.json({ success: true, length: queue.length }); });
-app.delete('/api/queue/:id', (req, res) => { queue = queue.filter(q => q.id != req.params.id); res.json({ success: true }); });
+app.delete('/api/queue/:id', (req, res) => { queue = queue.filter(q => String(q.id) !== req.params.id); res.json({ success: true }); });
 app.post('/api/queue/process', async (req, res) => {
     if (!queue.length) return res.json({ message: 'Queue empty' });
     const results = [];
@@ -1292,6 +1302,7 @@ app.post('/api/queue/process', async (req, res) => {
         const item = queue.shift();
         try {
             const handler = backends[item.backend || 'local'];
+            if (!handler) throw new Error('Unknown backend: ' + (item.backend || 'local'));
             const result = await handler(item, req.headers);
             results.push({ id: item.id, success: true, data: result.data });
         } catch (e) { results.push({ id: item.id, success: false, error: e.message }); }
@@ -1349,6 +1360,34 @@ app.post('/v1/chat/completions', async (req, res) => {
         const imageUrl = result.data?.[0]?.url || result.data?.[0]?.b64_json;
         res.json({ choices: [{ message: { role: 'assistant', content: imageUrl ? `![Image](${imageUrl})` : 'Failed' } }] });
     } catch (e) { res.json({ choices: [{ message: { role: 'assistant', content: 'Error: ' + e.message } }] }); }
+});
+
+// Self-update endpoints
+app.get('/api/update/check', requireAuth, (req, res) => {
+    try {
+        const cwd = __dirname;
+        execSync('git fetch origin', { cwd, timeout: 15000 });
+        const local = execSync('git rev-parse HEAD', { cwd }).toString().trim();
+        const remote = execSync('git rev-parse origin/main', { cwd }).toString().trim();
+        const behind = +execSync('git rev-list --count HEAD..origin/main', { cwd }).toString().trim();
+        let version = 'unknown';
+        try { version = require('./package.json').version; } catch {}
+        const shortHash = local.slice(0, 7);
+        let changelog = '';
+        if (behind > 0) {
+            changelog = execSync('git log --oneline HEAD..origin/main', { cwd }).toString().trim();
+        }
+        res.json({ version, hash: shortHash, behind, changelog, upToDate: behind === 0 });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/update/apply', requireAuth, (req, res) => {
+    try {
+        const cwd = __dirname;
+        const output = execSync('git pull origin main', { cwd, timeout: 30000 }).toString();
+        res.json({ success: true, output });
+        setTimeout(() => { process.exit(0); }, 1000);
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 const PORT = process.env.PORT || 3001;

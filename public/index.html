@@ -969,6 +969,17 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <h3 class="mt">Batch Prompts</h3>
 <div class="flex"><button onclick="$('batchPromptsFile').click()">📄 Import Prompts (.txt)</button><span id="batchPromptsStatus" style="color:var(--muted);font-size:11px"></span></div>
 <input type="file" id="batchPromptsFile" accept=".txt" style="display:none" onchange="importBatchPrompts(this)">
+
+<h3 class="mt">Updates</h3>
+<div id="updateSection">
+<div style="display:flex;align-items:center;gap:8px">
+    <span id="versionInfo" style="color:var(--muted)">Version: checking...</span>
+    <button onclick="checkForUpdates()" class="btn-sm">Check for Updates</button>
+    <button id="updateBtn" onclick="applyUpdate()" class="btn-sm" style="display:none;background:#ff9800">Update &amp; Restart</button>
+</div>
+<pre id="updateChangelog" style="display:none;margin-top:8px;font-size:11px;max-height:200px;overflow-y:auto;background:var(--bg);padding:8px;border-radius:4px"></pre>
+<div id="updateStatus" style="margin-top:4px;font-size:12px;color:var(--muted)"></div>
+</div>
 </div>
 </div>
 
@@ -1050,6 +1061,7 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 
 <script>
 const $=id=>document.getElementById(id);
+function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 let settings=JSON.parse(localStorage.getItem('sdproxy_settings')||'{}');
 let localHistory=JSON.parse(localStorage.getItem('sdproxy_history')||'[]');
 let localFavorites=JSON.parse(localStorage.getItem('sdproxy_favorites')||'[]');
@@ -1363,7 +1375,7 @@ function removeTag(tag){$('prompt').value=$('prompt').value.split(',').map(t=>t.
 
 // Session management
 let sessionId=localStorage.getItem('sdproxy_session');
-if(!sessionId){fetch('/api/session').then(r=>r.json()).then(d=>{sessionId=d.sessionId;localStorage.setItem('sdproxy_session',sessionId);initSSE();});}else{initSSE();}
+if(!sessionId){fetch('/api/session').then(r=>r.json()).then(d=>{sessionId=d.sessionId;localStorage.setItem('sdproxy_session',sessionId);initSSE();}).catch(()=>{});}else{initSSE();}
 
 function initSSE(){
 // Progress tracking
@@ -1433,10 +1445,10 @@ async function generate(){
         if(data.data?.length){
             allImages=data.data.map(d=>d.url||(d.b64_json?.startsWith('data:')?d.b64_json:'data:image/png;base64,'+d.b64_json));
             $('status').textContent='✅ Done';toast('Generation complete!');
-            const pr=body.prompt.replace(/'/g,"\\'");
-            $('result').innerHTML=allImages.map((u,i)=>`<div class="img-card"><img src="${u}" onclick="showModal('${u}')" ondblclick="openLightbox('${u}')" oncontextmenu="showContextMenu(event,'${u}','${pr.slice(0,200)}')">
-                <div class="info-overlay">${body.prompt.slice(0,50)}...</div>
-                <div class="actions"><button onclick="showModal('${u}')">View</button><button onclick="sendToImg2ImgUrl('${u}')">i2i</button><button onclick="addFavorite('${u}')">⭐</button></div></div>`).join('');
+            const pr=escAttr(body.prompt);
+            $('result').innerHTML=allImages.map((u,i)=>{const eu=escAttr(u);return`<div class="img-card"><img src="${u}" onclick="showModal('${eu}')" ondblclick="openLightbox('${eu}')" oncontextmenu="showContextMenu(event,'${eu}','${pr.slice(0,200)}')">
+                <div class="info-overlay">${escAttr(body.prompt.slice(0,50))}...</div>
+                <div class="actions"><button onclick="showModal('${eu}')">View</button><button onclick="sendToImg2ImgUrl('${eu}')">i2i</button><button onclick="addFavorite('${eu}')">⭐</button></div></div>`;}).join('');
             addToLocalHistory(body.prompt,body.negative_prompt,body,data.data,$('backend').value);
             addToLocalCosts($('backend').value,body.cost||0);
             loadHistory();
@@ -1707,12 +1719,12 @@ if(search)filtered=filtered.filter(h=>h.prompt?.toLowerCase().includes(search));
 if(currentFolder)filtered=filtered.filter(h=>h.folder===currentFolder);
 const items=filtered.slice(0,50);
 const count=items.length;$('historyCount').textContent=count||'';$('historyCount').style.display=count?'':'none';
-$('historyGrid').innerHTML=items.map(h=>{const img=h.images[0];const url=img?.url||img?.thumb||'';const p=(h.prompt||'').replace(/'/g,"\\'");return`<div class="history-item" onclick="showModal('${url}','${p.slice(0,100)}')" ondblclick="openLightbox('${url}')" oncontextmenu="showContextMenu(event,'${url}','${p.slice(0,200)}')" title="${p.slice(0,200)}"><img src="${url}"><button class="btn-sm" style="position:absolute;bottom:2px;right:2px;padding:1px 4px" onclick="event.stopPropagation();navigator.clipboard.writeText('${p}');toast('Copied!')" title="Copy prompt">📋</button></div>`;}).join('')||'<p style="color:var(--muted)">No history</p>';}
+$('historyGrid').innerHTML=items.map(h=>{const img=h.images[0];const url=img?.url||img?.thumb||'';const p=escAttr(h.prompt||'');const eu=escAttr(url);return`<div class="history-item" onclick="showModal('${eu}','${p.slice(0,100)}')" ondblclick="openLightbox('${eu}')" oncontextmenu="showContextMenu(event,'${eu}','${p.slice(0,200)}')" title="${p.slice(0,200)}"><img src="${url}"><button class="btn-sm" style="position:absolute;bottom:2px;right:2px;padding:1px 4px" onclick="event.stopPropagation();navigator.clipboard.writeText(${JSON.stringify(h.prompt||'').replace(/</g,'\\u003c')});toast('Copied!')" title="Copy prompt">📋</button></div>`;}).join('')||'<p style="color:var(--muted)">No history</p>';}
 function clearHistory(){if(confirm('Clear all?')){localHistory=[];saveLocalHistory();loadHistory();}}
 function deleteHistoryItem(id){localHistory=localHistory.filter(h=>h.id!=id);saveLocalHistory();loadHistory();}
-function filterFolder(f){currentFolder=f;document.querySelectorAll('.folder-item').forEach(el=>el.classList.remove('active'));event.target.classList.add('active');loadHistory();}
+function filterFolder(el,f){currentFolder=f;document.querySelectorAll('.folder-item').forEach(e=>e.classList.remove('active'));el.classList.add('active');loadHistory();}
 function createFolder(){const name=prompt('Folder name:');if(name){localFolders.push({id:Date.now(),name});saveLocalFolders();loadFolders();}}
-function loadFolders(){$('folderList').innerHTML=localFolders.map(x=>`<span class="folder-item" onclick="filterFolder('${x.name}')">${x.name}</span>`).join('');}
+function loadFolders(){$('folderList').innerHTML=localFolders.map(x=>`<span class="folder-item" onclick="filterFolder(this,'${escAttr(x.name)}')">${escAttr(x.name)}</span>`).join('');}
 
 // Favorites/Gallery with tags
 let favoriteTags=JSON.parse(localStorage.getItem('sdproxy_fav_tags')||'{}');
@@ -1724,7 +1736,7 @@ const count=filtered.length;$('galleryCount').textContent=count||'';$('galleryCo
 allImages=filtered.map(x=>x.url);
 const allTags=[...new Set(Object.values(favoriteTags).flat())];
 $('galleryTags').innerHTML=allTags.map(t=>`<span class="tag" onclick="$('galleryTagFilter').value='${t}';loadFavorites()">${t}</span>`).join('');
-$('galleryGrid').innerHTML=filtered.map(x=>{const tags=favoriteTags[x.id]||[];return`<div class="img-card"><img src="${x.url}" onclick="showModal('${x.url}')" ondblclick="openLightbox('${x.url}')" oncontextmenu="showContextMenu(event,'${x.url}','')"><div class="actions"><button onclick="tagFavorite(${x.id})" class="btn-sm">🏷️</button><button onclick="removeFavorite(${x.id})" class="btn-danger btn-sm">×</button></div>${tags.length?`<div style="font-size:10px;color:var(--muted)">${tags.join(', ')}</div>`:''}</div>`;}).join('')||'<p style="color:var(--muted)">No favorites</p>';}
+$('galleryGrid').innerHTML=filtered.map(x=>{const tags=favoriteTags[x.id]||[];const eu=escAttr(x.url);return`<div class="img-card"><img src="${x.url}" onclick="showModal('${eu}')" ondblclick="openLightbox('${eu}')" oncontextmenu="showContextMenu(event,'${eu}','')"><div class="actions"><button onclick="tagFavorite(${x.id})" class="btn-sm">🏷️</button><button onclick="removeFavorite(${x.id})" class="btn-danger btn-sm">×</button></div>${tags.length?`<div style="font-size:10px;color:var(--muted)">${tags.join(', ')}</div>`:''}</div>`;}).join('')||'<p style="color:var(--muted)">No favorites</p>';}
 function tagFavorite(id){const current=(favoriteTags[id]||[]).join(', ');const tags=prompt('Tags (comma-separated):',current);if(tags!==null){favoriteTags[id]=tags.split(',').map(t=>t.trim()).filter(t=>t);localStorage.setItem('sdproxy_fav_tags',JSON.stringify(favoriteTags));loadFavorites();}}
 function addFavorite(url){localFavorites.unshift({id:Date.now(),url});saveLocalFavorites();loadFavorites();toast('Added to favorites');}
 function removeFavorite(id){localFavorites=localFavorites.filter(f=>f.id!=id);saveLocalFavorites();loadFavorites();}
@@ -1854,8 +1866,39 @@ function updatePixaiCost(){
 $('pixaiUpscale').onchange=updatePixaiCost;
 $('batch').onchange=function(){if($('backend').value==='pixai')updatePixaiCost();};
 
+// Self-update
+async function checkForUpdates(){
+    $('versionInfo').textContent='Checking...';
+    try{
+        const r=await fetch('/api/update/check',{credentials:'same-origin'});
+        const d=await r.json();
+        if(d.error)throw new Error(d.error);
+        $('versionInfo').textContent=`v${d.version} (${d.hash})`;
+        if(d.upToDate){
+            $('updateStatus').textContent='\u2705 Up to date';
+            $('updateBtn').style.display='none';
+            $('updateChangelog').style.display='none';
+        }else{
+            $('updateStatus').textContent=`\u2B06\uFE0F ${d.behind} update${d.behind>1?'s':''} available`;
+            $('updateBtn').style.display='';
+            if(d.changelog){$('updateChangelog').textContent=d.changelog;$('updateChangelog').style.display='block';}
+        }
+    }catch(e){$('versionInfo').textContent='Version: unknown';$('updateStatus').textContent='\u274C '+e.message;}
+}
+async function applyUpdate(){
+    if(!confirm('Update and restart server?'))return;
+    $('updateStatus').textContent='\u23F3 Updating...';$('updateBtn').disabled=true;
+    try{
+        const r=await fetch('/api/update/apply',{method:'POST',credentials:'same-origin'});
+        const d=await r.json();
+        if(d.error)throw new Error(d.error);
+        $('updateStatus').textContent='\u2705 Updated! Server restarting... Reloading in 5s.';
+        setTimeout(()=>location.reload(),5000);
+    }catch(e){$('updateStatus').textContent='\u274C '+e.message;$('updateBtn').disabled=false;}
+}
+
 // Init
 if(localStorage.getItem('sdproxy_theme')==='light'){document.body.classList.add('light-theme');document.querySelector('.theme-toggle').textContent='☀️';}
-loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();loadPixaiCredits();updatePixaiCost();initNaiTags();renderComfyWorkflows();loadDraft();updateTokenCount();
+loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();loadPixaiCredits();updatePixaiCost();initNaiTags();renderComfyWorkflows();loadDraft();updateTokenCount();checkForUpdates();
 </script>
 </body></html>
