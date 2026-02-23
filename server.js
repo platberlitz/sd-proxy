@@ -967,17 +967,19 @@ const backends = {
             if (opts.index) input.index = opts.index;
         }
 
-        const payload = { taskType, input };
-
         log(sessionId, `Midjourney request: taskType=${taskType}, speed=${input.speed || 'fast'}`);
 
-        // Create task
+        // Create task — MJ endpoint uses flat payload, not wrapped in input
+        const payload = { taskType, ...input };
+        log(sessionId, `Midjourney payload: ${JSON.stringify(payload)}`);
+
         const createRes = await fetch('https://api.kie.ai/api/v1/mj/createTask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
             body: JSON.stringify(payload)
         });
         const createData = await createRes.json();
+        log(sessionId, `Midjourney createTask response: ${JSON.stringify(createData)}`);
         if (createData.code !== 200 || !createData.data?.taskId) {
             throw new Error(createData.msg || createData.message || 'Failed to create MJ task');
         }
