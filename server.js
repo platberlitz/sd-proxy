@@ -934,7 +934,7 @@ const backends = {
         const opts = body.midjourney || {};
         const taskType = opts.taskType || 'imagine';
 
-        const input = { message: body.prompt };
+        const input = { prompt: body.prompt, message: body.prompt };
         if (opts.speed) input.speed = opts.speed;
         if (opts.version) input.version = opts.version;
         if (opts.aspectRatio) input.aspectRatio = opts.aspectRatio;
@@ -969,11 +969,12 @@ const backends = {
 
         log(sessionId, `Midjourney request: taskType=${taskType}, speed=${input.speed || 'fast'}`);
 
-        // Create task — MJ endpoint uses flat payload, not wrapped in input
-        const payload = { taskType, ...input };
+        // Use standard jobs API with mj/textToImage model (MJ-specific endpoint was removed)
+        const model = `mj/${taskType === 'blend' ? 'imageToImage' : taskType === 'upscale' ? 'generateUpscale' : taskType === 'variation' ? 'generateVary' : 'textToImage'}`;
+        const payload = { model, input };
         log(sessionId, `Midjourney payload: ${JSON.stringify(payload)}`);
 
-        const createRes = await fetch('https://api.kie.ai/api/v1/mj/createTask', {
+        const createRes = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
             body: JSON.stringify(payload)
@@ -991,23 +992,29 @@ const backends = {
         for (let i = 0; i < 120; i++) {
             await new Promise(r => setTimeout(r, 5000));
             const statusRes = await fetch(
-                `https://api.kie.ai/api/v1/mj/queryTask?taskId=${taskId}`,
+                `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`,
                 { headers: { 'Authorization': `Bearer ${apiKey}` } }
             );
             const status = await statusRes.json();
-            const state = status.data?.status;
+            const state = status.data?.state || status.data?.status;
 
             log(sessionId, `Midjourney task ${taskId}: ${state}`);
 
-            if (state === 'SUCCESS') {
-                const urls = status.data?.resultUrls || (status.data?.resultUrl ? [status.data.resultUrl] : []);
+            if ((state === 'success' || state === 'SUCCESS') && (status.data?.resultJson || status.data?.resultUrls || status.data?.resultUrl)) {
+                let urls;
+                if (status.data.resultJson) {
+                    const result = JSON.parse(status.data.resultJson);
+                    urls = result.resultUrls || [];
+                } else {
+                    urls = status.data.resultUrls || (status.data.resultUrl ? [status.data.resultUrl] : []);
+                }
                 if (urls.length) {
                     log(sessionId, `Midjourney completed: ${urls.length} images`);
                     return { data: urls.map(url => ({ url })) };
                 }
                 throw new Error('Task completed but no images returned');
             }
-            if (state === 'FAILED' || state === 'FAIL') {
+            if (state === 'FAILED' || state === 'FAIL' || state === 'fail') {
                 throw new Error(status.data?.failReason || status.data?.failMsg || 'MJ generation failed');
             }
         }
