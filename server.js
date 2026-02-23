@@ -969,7 +969,7 @@ const backends = {
             if (opts.index) input.index = opts.index;
         }
 
-        const payload = { taskType, ...input };
+        const payload = { taskType, input };
 
         log(sessionId, `Midjourney request: taskType=${taskType}, speed=${input.speed || 'fast'}`);
 
