@@ -929,93 +929,83 @@ const backends = {
 
     async midjourney(body, headers, sessionId) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
-        if (!apiKey) throw new Error('Midjourney (Kie.ai) requires API key');
+        if (!apiKey) throw new Error('Midjourney requires LegNext API key');
 
         const opts = body.midjourney || {};
         const taskType = opts.taskType || 'imagine';
+        const BASE = 'https://api.legnext.ai/api/v1';
+        const authHeaders = { 'Content-Type': 'application/json', 'x-api-key': apiKey };
 
-        const input = { prompt: body.prompt, message: body.prompt };
-        if (opts.speed) input.speed = opts.speed;
-        if (opts.version) input.version = opts.version;
-        if (opts.aspectRatio) input.aspectRatio = opts.aspectRatio;
-        if (opts.stylization != null) input.stylization = +opts.stylization;
-        if (opts.weirdness != null) input.weirdness = +opts.weirdness;
-        if (opts.variety != null) input.variety = +opts.variety;
-        if (opts.enableTranslation) input.enableTranslation = opts.enableTranslation;
-        if (opts.waterMark) input.waterMark = opts.waterMark;
+        let jobId;
 
-        // For blend — upload base64 images to get hosted URLs
-        if (taskType === 'blend' && body.reference_images?.length) {
-            const uploadedUrls = [];
+        if (taskType === 'imagine') {
+            // Build prompt with MJ flags
+            let text = body.prompt;
+            if (opts.version) text += ` --v ${opts.version}`;
+            if (opts.aspectRatio && opts.aspectRatio !== '1:1') text += ` --ar ${opts.aspectRatio}`;
+            if (opts.stylization != null && +opts.stylization !== 100) text += ` --s ${opts.stylization}`;
+            if (opts.weirdness != null && +opts.weirdness > 0) text += ` --w ${opts.weirdness}`;
+            if (opts.variety != null && +opts.variety > 0) text += ` --variety ${opts.variety}`;
+            if (opts.speed === 'turbo') text += ' --turbo';
+            else if (opts.speed === 'relaxed') text += ' --relax';
+
+            log(sessionId, `Midjourney imagine: ${text.substring(0, 100)}...`);
+            const res = await fetch(`${BASE}/diffusion`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ text }) });
+            const data = await res.json();
+            log(sessionId, `Midjourney response: ${JSON.stringify(data).substring(0, 500)}`);
+            if (data.error?.message || !data.job_id) throw new Error(data.error?.message || data.message || 'Failed to create task');
+            jobId = data.job_id;
+        } else if (taskType === 'blend' && body.reference_images?.length) {
+            // Upload base64 images, then blend
+            const imgUrls = [];
             for (const img of body.reference_images) {
-                const uploadRes = await fetch('https://kieai.redpandaai.co/api/file-base64-upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify({ base64Data: img, uploadPath: 'images', fileName: `ref-${Date.now()}.png` })
-                });
-                const uploadData = await uploadRes.json();
-                const url = uploadData.data?.fileUrl || uploadData.data?.downloadUrl || uploadData.data?.url || uploadData.fileUrl || uploadData.url;
-                if (!url) throw new Error(`Upload failed: ${JSON.stringify(uploadData)}`);
-                uploadedUrls.push(url);
+                // LegNext expects hosted URLs — upload via data URI proxy or use directly if already URLs
+                if (img.startsWith('http')) { imgUrls.push(img); continue; }
+                // For base64, we need to find a hosting solution — for now pass as data URI
+                imgUrls.push(img.startsWith('data:') ? img : `data:image/png;base64,${img}`);
             }
-            input.imageUrls = uploadedUrls;
+            const aspect_ratio = opts.aspectRatio === '16:9' ? '3:2' : opts.aspectRatio === '9:16' ? '2:3' : '1:1';
+            const res = await fetch(`${BASE}/blend`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ imgUrls, aspect_ratio }) });
+            const data = await res.json();
+            if (data.error?.message || !data.job_id) throw new Error(data.error?.message || 'Failed to create blend task');
+            jobId = data.job_id;
+        } else if (taskType === 'upscale' && opts.parentTaskId) {
+            const res = await fetch(`${BASE}/upscale`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ jobId: opts.parentTaskId, imageNo: opts.index || 0, type: 0 }) });
+            const data = await res.json();
+            if (data.error?.message || !data.job_id) throw new Error(data.error?.message || 'Failed to create upscale task');
+            jobId = data.job_id;
+        } else if (taskType === 'variation' && opts.parentTaskId) {
+            const res = await fetch(`${BASE}/variation`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ jobId: opts.parentTaskId, imageNo: opts.index || 0, type: 1 }) });
+            const data = await res.json();
+            if (data.error?.message || !data.job_id) throw new Error(data.error?.message || 'Failed to create variation task');
+            jobId = data.job_id;
+        } else {
+            throw new Error(`Unsupported task type: ${taskType}`);
         }
 
-        // For upscale/variation — need parent taskId and index
-        if ((taskType === 'upscale' || taskType === 'variation') && opts.parentTaskId) {
-            input.taskId = opts.parentTaskId;
-            if (opts.index) input.index = opts.index;
-        }
-
-        log(sessionId, `Midjourney request: taskType=${taskType}, speed=${input.speed || 'fast'}`);
-
-        // Use standard jobs API with mj/textToImage model (MJ-specific endpoint was removed)
-        const model = `mj/${taskType === 'blend' ? 'imageToImage' : taskType === 'upscale' ? 'generateUpscale' : taskType === 'variation' ? 'generateVary' : 'textToImage'}`;
-        const payload = { model, input };
-        log(sessionId, `Midjourney payload: ${JSON.stringify(payload)}`);
-
-        const createRes = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            body: JSON.stringify(payload)
-        });
-        const createData = await createRes.json();
-        log(sessionId, `Midjourney createTask response: ${JSON.stringify(createData)}`);
-        if (createData.code !== 200 || !createData.data?.taskId) {
-            throw new Error(createData.msg || createData.message || 'Failed to create MJ task');
-        }
-
-        const taskId = createData.data.taskId;
-        log(sessionId, `Midjourney task created: ${taskId}`);
+        log(sessionId, `Midjourney task created: ${jobId}`);
 
         // Poll for results (up to ~10 minutes, every 5 seconds)
         for (let i = 0; i < 120; i++) {
             await new Promise(r => setTimeout(r, 5000));
-            const statusRes = await fetch(
-                `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`,
-                { headers: { 'Authorization': `Bearer ${apiKey}` } }
-            );
+            const statusRes = await fetch(`${BASE}/job/${jobId}`, { headers: { 'x-api-key': apiKey } });
             const status = await statusRes.json();
-            const state = status.data?.state || status.data?.status;
+            const state = status.status;
 
-            log(sessionId, `Midjourney task ${taskId}: ${state}`);
+            log(sessionId, `Midjourney task ${jobId}: ${state}`);
+            sendProgress(sessionId, { type: 'generation', progress: state === 'processing' ? 0.5 : state === 'staged' ? 0.2 : 0.1 });
 
-            if ((state === 'success' || state === 'SUCCESS') && (status.data?.resultJson || status.data?.resultUrls || status.data?.resultUrl)) {
-                let urls;
-                if (status.data.resultJson) {
-                    const result = JSON.parse(status.data.resultJson);
-                    urls = result.resultUrls || [];
-                } else {
-                    urls = status.data.resultUrls || (status.data.resultUrl ? [status.data.resultUrl] : []);
-                }
+            if (state === 'completed') {
+                const urls = status.output?.image_urls || (status.output?.image_url ? [status.output.image_url] : []);
                 if (urls.length) {
                     log(sessionId, `Midjourney completed: ${urls.length} images`);
-                    return { data: urls.map(url => ({ url })) };
+                    sendProgress(sessionId, { type: 'generation', progress: 1, done: true });
+                    return { data: urls.map(url => ({ url })), jobId };
                 }
                 throw new Error('Task completed but no images returned');
             }
-            if (state === 'FAILED' || state === 'FAIL' || state === 'fail') {
-                throw new Error(status.data?.failReason || status.data?.failMsg || 'MJ generation failed');
+            if (state === 'failed') {
+                throw new Error(status.error?.message || 'MJ generation failed');
             }
         }
         throw new Error('Timeout waiting for Midjourney task');
