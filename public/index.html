@@ -12,6 +12,7 @@ h3{color:var(--accent);font-size:14px;margin-bottom:8px}
 .tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;justify-content:center}
 .tab{padding:6px 12px;background:var(--btn-bg);border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:4px;font-size:12px}
 .tab:hover{background:var(--btn-hover)}.tab.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tab-content{display:none}.tab-content.active{display:block}
 .card{background:var(--card);border:1px solid var(--border);padding:12px;border-radius:6px;margin-bottom:10px}
 label{display:block;margin:6px 0 2px;color:var(--muted);font-size:11px;text-transform:uppercase}
@@ -103,6 +104,7 @@ code{background:#1a2e1a;padding:6px;border-radius:4px;display:block;font-size:11
 .lightbox img{max-width:95%;max-height:95%;object-fit:contain;cursor:grab}
 .lightbox img.dragging{cursor:grabbing}
 @media(max-width:768px){.row-6{grid-template-columns:repeat(3,1fr)}.row-4{grid-template-columns:repeat(2,1fr)}.sticky-gen{position:relative}}
+@media(max-width:900px){.tabs{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;padding-bottom:4px}.tab{white-space:nowrap}}
 </style>
 </head>
 <body>
@@ -871,7 +873,7 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <button onclick="clearHistory()" class="btn-sm btn-danger">Clear All</button>
 </div>
 <div class="mt">
-<span class="folder-item active" onclick="filterFolder(null)">All</span>
+<span class="folder-item active" onclick="filterFolder(this,null)">All</span>
 <span id="folderList"></span>
 <button class="btn-sm" onclick="createFolder()">+ Folder</button>
 </div>
@@ -1062,6 +1064,7 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <script>
 const $=id=>document.getElementById(id);
 function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escJs(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n').replace(/</g,'\\x3C');}
 let settings=JSON.parse(localStorage.getItem('sdproxy_settings')||'{}');
 let localHistory=JSON.parse(localStorage.getItem('sdproxy_history')||'[]');
 let localFavorites=JSON.parse(localStorage.getItem('sdproxy_favorites')||'[]');
@@ -1152,7 +1155,7 @@ const el=$('naiCostEstimate');if(el)el.innerHTML=`💎 Estimated: <strong>${cost
 // Prompt history
 let promptHistory=JSON.parse(localStorage.getItem('sdproxy_prompt_history')||'[]');
 function savePromptToHistory(p){if(!p||promptHistory[0]===p)return;promptHistory.unshift(p);promptHistory=promptHistory.slice(0,50);localStorage.setItem('sdproxy_prompt_history',JSON.stringify(promptHistory));}
-function showPromptHistory(){const h=promptHistory.slice(0,20).map((p,i)=>`<div style="padding:6px;border-bottom:1px solid var(--border);cursor:pointer" onclick="$('prompt').value=promptHistory[${i}];this.parentElement.parentElement.classList.remove('show')">${p.slice(0,100)}${p.length>100?'...':''}</div>`).join('');
+function showPromptHistory(){const h=promptHistory.slice(0,20).map((p,i)=>`<div style="padding:6px;border-bottom:1px solid var(--border);cursor:pointer" onclick="$('prompt').value=promptHistory[${i}];this.parentElement.parentElement.classList.remove('show')">${escapeHtml(p.slice(0,100))}${p.length>100?'...':''}</div>`).join('');
 const m=document.createElement('div');m.className='modal show';m.innerHTML=`<div class="card" style="max-width:600px;max-height:80vh;overflow-y:auto"><h3>Prompt History</h3><div class="mt">${h||'No history yet'}</div><button class="mt" onclick="this.parentElement.parentElement.remove()">Close</button></div>`;m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
 
 // Negative presets
@@ -1170,7 +1173,20 @@ function stopGenTimer(){if(genTimerInterval){clearInterval(genTimerInterval);gen
 // Extended Danbooru tags
 const TAGS=['1girl','1boy','solo','long_hair','short_hair','blonde_hair','brown_hair','black_hair','white_hair','red_hair','blue_hair','pink_hair','purple_hair','green_hair','multicolored_hair','blue_eyes','red_eyes','green_eyes','brown_eyes','yellow_eyes','purple_eyes','heterochromia','smile','open_mouth','closed_eyes','looking_at_viewer','looking_away','from_behind','from_side','standing','sitting','lying','walking','running','jumping','kneeling','outdoors','indoors','sky','cloud','sun','moon','night','day','sunset','sunrise','rain','snow','wind','water','fire','lightning','forest','mountain','beach','ocean','city','street','room','bedroom','bathroom','kitchen','school','classroom','office','castle','ruins','fantasy','sci-fi','cyberpunk','steampunk','medieval','modern','futuristic','simple_background','white_background','black_background','gradient_background','detailed_background','blurry_background','full_body','upper_body','portrait','cowboy_shot','close-up','wide_shot','dutch_angle','from_above','from_below','pov','dress','shirt','skirt','pants','shorts','jacket','coat','sweater','hoodie','uniform','school_uniform','maid','armor','bikini','swimsuit','underwear','nude','weapon','sword','gun','magic','wings','tail','horns','ears','animal_ears','cat_ears','dog_ears','fox_ears','rabbit_ears','halo','crown','hat','glasses','mask','jewelry','necklace','earrings','bracelet','ring','flower','ribbon','bow','lace','frills','high_heels','boots','barefoot','thighhighs','stockings','pantyhose','gloves','cape','scarf'];
 
-function showTab(id){document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));$('tab-'+id).classList.add('active');event.target.classList.add('active');}
+function showTab(id,tabBtn){
+const panel=$('tab-'+id);
+if(!panel)return;
+document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+panel.classList.add('active');
+const clicked=tabBtn||(typeof event!=='undefined'&&event?.target?.classList?.contains('tab')?event.target:null);
+if(clicked){clicked.classList.add('active');}
+else{
+const fallback=[...document.querySelectorAll('.tab')].find(t=>(t.getAttribute('onclick')||'').includes(`showTab('${id}')`));
+fallback?.classList.add('active');
+}
+localStorage.setItem('sdproxy_active_tab',id);
+}
 function showModal(url,info){currentImage=url;$('modalImg').src=url;$('modalInfo').textContent=info||'';$('modal').classList.add('show');currentIndex=allImages.indexOf(url);}
 function closeModal(){$('modal').classList.remove('show');}
 function prevImage(){if(currentIndex>0){currentIndex--;showModal(allImages[currentIndex]);}}
@@ -1254,10 +1270,10 @@ const base={negative_prompt:$('negative').value,width:+$('width').value,height:+
 $('abResults').innerHTML='<p>Generating A...</p><p></p>';
 const resA=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify({...base,prompt:$('abPromptA').value})});
 const dataA=await resA.json();const urlA=dataA.data?.[0]?.url||'data:image/png;base64,'+dataA.data?.[0]?.b64_json;
-$('abResults').innerHTML=`<div><h4>A</h4><img src="${urlA}" style="max-width:100%"></div><p>Generating B...</p>`;
+$('abResults').innerHTML=`<div><h4>A</h4><img src="${escAttr(urlA)}" style="max-width:100%"></div><p>Generating B...</p>`;
 const resB=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify({...base,prompt:$('abPromptB').value})});
 const dataB=await resB.json();const urlB=dataB.data?.[0]?.url||'data:image/png;base64,'+dataB.data?.[0]?.b64_json;
-$('abResults').innerHTML=`<div><h4>A</h4><img src="${urlA}" style="max-width:100%;cursor:pointer" onclick="showModal('${urlA}')"></div><div><h4>B</h4><img src="${urlB}" style="max-width:100%;cursor:pointer" onclick="showModal('${urlB}')"></div>`;}
+$('abResults').innerHTML=`<div><h4>A</h4><img src="${escAttr(urlA)}" style="max-width:100%;cursor:pointer" onclick="showModal('${escJs(urlA)}')"></div><div><h4>B</h4><img src="${escAttr(urlB)}" style="max-width:100%;cursor:pointer" onclick="showModal('${escJs(urlB)}')"></div>`;}
 
 // Multi-Backend Comparison
 function showBackendCompare(){$('compareResults').innerHTML='';$('compareModal').classList.add('show');}
@@ -1274,12 +1290,12 @@ $('compareResults').innerHTML=backends.map(b=>`<div id="cmp-${b}"><h4>${b}</h4><
 for(const b of backends){
 try{const res=await fetch('/v1/images/generations',{method:'POST',headers:{...getHeaders(),'X-Backend':b},body:JSON.stringify({prompt,negative_prompt:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,n:1})});
 const data=await res.json();const url=data.data?.[0]?.url||'data:image/png;base64,'+data.data?.[0]?.b64_json;
-$('cmp-'+b).innerHTML=`<h4>${b}</h4><img src="${url}" style="max-width:100%;cursor:pointer" onclick="showModal('${url}')">`;}
-catch(e){$('cmp-'+b).innerHTML=`<h4>${b}</h4><p style="color:var(--danger)">Error: ${e.message}</p>`;}}}
+$('cmp-'+b).innerHTML=`<h4>${escapeHtml(b)}</h4><img src="${escAttr(url)}" style="max-width:100%;cursor:pointer" onclick="showModal('${escJs(url)}')">`;}
+catch(e){$('cmp-'+b).innerHTML=`<h4>${escapeHtml(b)}</h4><p style="color:var(--danger)">Error: ${escapeHtml(e.message)}</p>`;}}}
 
 // ComfyUI Workflow Library
 let comfyWorkflows=JSON.parse(localStorage.getItem('sdproxy_comfy_workflows')||'[]');
-function renderComfyWorkflows(){$('comfyWorkflowSelect').innerHTML='<option value="">-- Saved Workflows --</option>'+comfyWorkflows.map((w,i)=>`<option value="${i}">${w.name}</option>`).join('');}
+function renderComfyWorkflows(){$('comfyWorkflowSelect').innerHTML='<option value="">-- Saved Workflows --</option>'+comfyWorkflows.map((w,i)=>`<option value="${i}">${escapeHtml(w.name)}</option>`).join('');}
 function loadComfyWorkflow(){const i=$('comfyWorkflowSelect').value;if(i!=='')$('comfyWorkflow').value=comfyWorkflows[i].workflow;}
 function saveComfyWorkflow(){const name=$('comfyWorkflowName').value||'Workflow '+(comfyWorkflows.length+1);const workflow=$('comfyWorkflow').value;if(!workflow)return;comfyWorkflows.push({name,workflow});localStorage.setItem('sdproxy_comfy_workflows',JSON.stringify(comfyWorkflows));renderComfyWorkflows();$('comfyWorkflowName').value='';}
 function deleteComfyWorkflow(){const i=$('comfyWorkflowSelect').value;if(i==='')return;comfyWorkflows.splice(i,1);localStorage.setItem('sdproxy_comfy_workflows',JSON.stringify(comfyWorkflows));renderComfyWorkflows();$('comfyWorkflow').value='';}
@@ -1290,7 +1306,7 @@ async function fetchBackendModels(){
     const noModelBackends=['local','comfyui','pixai','pollinations','kie','midjourney'];
     
     const setSelect=(html)=>{$('modelContainer').innerHTML=`<select id="model" style="width:100%">${html}</select>`;};
-    const setInput=(placeholder)=>{$('modelContainer').innerHTML=`<input id="model" placeholder="${placeholder}" style="width:100%">`;};
+    const setInput=(placeholder)=>{$('modelContainer').innerHTML=`<input id="model" placeholder="${escAttr(placeholder)}" style="width:100%">`;};
     
     if(noModelBackends.includes(backend)){setSelect('<option value="">N/A</option>');return;}
     if(!apiKey){setSelect('<option value="">Enter API key first</option>');return;}
@@ -1318,7 +1334,7 @@ async function fetchBackendModels(){
             models=(data.data||[]).map(m=>m.id);
         }
         models.sort();
-        setSelect(models.length?models.map(m=>`<option value="${m}">${m}</option>`).join(''):'<option value="">No models found</option>');
+        setSelect(models.length?models.map(m=>`<option value="${escAttr(m)}">${escapeHtml(m)}</option>`).join(''):'<option value="">No models found</option>');
     }catch(e){setInput('Enter model name');}
 }
 
@@ -1366,10 +1382,10 @@ function onPromptInput(el){const val=el.value,pos=el.selectionStart,lastComma=va
 if(word.length<2){$('autocomplete').style.display='none';return;}
 const matches=TAGS.filter(t=>t.includes(word)).slice(0,15);
 if(!matches.length){$('autocomplete').style.display='none';return;}
-$('autocomplete').innerHTML=matches.map(t=>`<div onclick="insertTag('${t}')">${t}</div>`).join('');$('autocomplete').style.display='block';}
+$('autocomplete').innerHTML=matches.map(t=>`<div onclick="insertTag('${escJs(t)}')">${escapeHtml(t)}</div>`).join('');$('autocomplete').style.display='block';}
 function insertTag(tag){const el=$('prompt'),val=el.value,pos=el.selectionStart,lastComma=val.lastIndexOf(',',pos-1);el.value=val.slice(0,lastComma+1)+' '+tag+', '+val.slice(pos);$('autocomplete').style.display='none';el.focus();updatePromptTags();}
 function onPromptKeydown(e){if(e.key==='Escape')$('autocomplete').style.display='none';if(e.key==='Tab'&&$('autocomplete').style.display==='block'){e.preventDefault();$('autocomplete').firstChild?.click();}}
-function updatePromptTags(){const tags=$('prompt').value.split(',').map(t=>t.trim()).filter(t=>t);$('promptTags').innerHTML=tags.slice(0,20).map(t=>{const w=t.match(/:([0-9.]+)\)$/);return`<span class="tag${w?' weighted':''}" onclick="removeTag('${t}')">${t}</span>`;}).join('');}
+function updatePromptTags(){const tags=$('prompt').value.split(',').map(t=>t.trim()).filter(t=>t);$('promptTags').innerHTML=tags.slice(0,20).map(t=>{const w=t.match(/:([0-9.]+)\)$/);return`<span class="tag${w?' weighted':''}" onclick="removeTag('${escJs(t)}')">${escapeHtml(t)}</span>`;}).join('');}
 
 function removeTag(tag){$('prompt').value=$('prompt').value.split(',').map(t=>t.trim()).filter(t=>t!==tag).join(', ')+', ';updatePromptTags();}
 
@@ -1391,7 +1407,7 @@ logSource.onmessage=e=>{const d=JSON.parse(e.data);appendLog(d.message,d.level);
 }
 
 function appendLog(msg,level='info'){const el=$('consoleOutput');if(!el)return;const time=new Date().toLocaleTimeString();const color=level==='error'?'#e94560':level==='warn'?'#f0a500':'#c8d6c8';el.innerHTML+=`<span style="color:var(--muted)">[${time}]</span> <span style="color:${color}">${escapeHtml(msg)}</span>\n`;if($('consoleAutoScroll').checked)el.scrollTop=el.scrollHeight;}
-function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escapeHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function clearConsole(){$('consoleOutput').innerHTML='';}
 
 function getHeaders(){const h={'Content-Type':'application/json','X-Backend':$('backend').value,'X-Local-Url':$('localUrl').value,'X-Session-Id':sessionId};if($('apiKey').value)h['Authorization']='Bearer '+$('apiKey').value;if($('backend').value==='custom')h['X-Custom-Url']=$('customUrl').value;return h;}
@@ -1445,12 +1461,13 @@ async function generate(){
         if(data.data?.length){
             allImages=data.data.map(d=>d.url||(d.b64_json?.startsWith('data:')?d.b64_json:'data:image/png;base64,'+d.b64_json));
             $('status').textContent='✅ Done';toast('Generation complete!');
-            const pr=escAttr(body.prompt);
-            $('result').innerHTML=allImages.map((u,i)=>{const eu=escAttr(u);return`<div class="img-card"><img src="${u}" onclick="showModal('${eu}')" ondblclick="openLightbox('${eu}')" oncontextmenu="showContextMenu(event,'${eu}','${pr.slice(0,200)}')">
-                <div class="info-overlay">${escAttr(body.prompt.slice(0,50))}...</div>
-                <div class="actions"><button onclick="showModal('${eu}')">View</button><button onclick="sendToImg2ImgUrl('${eu}')">i2i</button><button onclick="addFavorite('${eu}')">⭐</button></div></div>`;}).join('');
+            const promptPreview=escapeHtml(body.prompt.slice(0,50));
+            const promptContext=escJs(body.prompt.slice(0,200));
+            $('result').innerHTML=allImages.map(u=>{const src=escAttr(u),uJs=escJs(u);return`<div class="img-card"><img src="${src}" onclick="showModal('${uJs}')" ondblclick="openLightbox('${uJs}')" oncontextmenu="showContextMenu(event,'${uJs}','${promptContext}')">
+                <div class="info-overlay">${promptPreview}...</div>
+                <div class="actions"><button onclick="showModal('${uJs}')">View</button><button onclick="sendToImg2ImgUrl('${uJs}')">i2i</button><button onclick="addFavorite('${uJs}')">⭐</button></div></div>`;}).join('');
             addToLocalHistory(body.prompt,body.negative_prompt,body,data.data,$('backend').value);
-            addToLocalCosts($('backend').value,body.cost||0);
+            addToLocalCosts($('backend').value,data.cost||0);
             loadHistory();
         }
     }catch(e){$('status').textContent='❌ '+e.message;toast('Error: '+e.message);}
@@ -1460,7 +1477,7 @@ async function generate(){
 async function interruptGen(){await fetch('/api/interrupt',{method:'POST',headers:getHeaders()});$('status').textContent='⏹ Interrupted';}
 
 // Reference images
-function renderRefImages(){$('refImagesContainer').innerHTML=refImages.map((src,i)=>`<div style="position:relative;"><img src="${src}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;"><button onclick="removeRefImage(${i})" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;border:none;background:var(--danger);color:#fff;font-size:10px;cursor:pointer;">×</button></div>`).join('');}
+function renderRefImages(){$('refImagesContainer').innerHTML=refImages.map((src,i)=>`<div style="position:relative;"><img src="${escAttr(src)}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;"><button onclick="removeRefImage(${i})" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;border:none;background:var(--danger);color:#fff;font-size:10px;cursor:pointer;">×</button></div>`).join('');}
 function removeRefImage(i){refImages.splice(i,1);renderRefImages();}
 function clearRefImages(){refImages=[];renderRefImages();}
 $('refImagesInput').onchange=function(){const files=Array.from(this.files);const remaining=15-refImages.length;files.slice(0,remaining).forEach(f=>{const r=new FileReader();r.onload=e=>{refImages.push(e.target.result);renderRefImages();};r.readAsDataURL(f);});this.value='';};
@@ -1479,7 +1496,7 @@ async function generateMatrix(){
         if(data.data?.[0])results.push(data.data[0]);
     }
     allImages=results.map(d=>d.url||'data:image/png;base64,'+d.b64_json);
-    $('result').innerHTML=allImages.map(u=>`<div class="img-card"><img src="${u}" onclick="showModal('${u}')"></div>`).join('');
+    $('result').innerHTML=allImages.map(u=>`<div class="img-card"><img src="${escAttr(u)}" onclick="showModal('${escJs(u)}')"></div>`).join('');
     $('status').textContent='✅ Done';
 }
 
@@ -1595,7 +1612,7 @@ async function generateXYZ(){
     try{const res=await fetch('/api/xyz-plot',{method:'POST',headers:getHeaders(),body:JSON.stringify({baseParams,xAxis:{param:xParam,values:xVals},yAxis:yParam?{param:yParam,values:yVals}:null})});
     const data=await res.json();if(data.error)throw new Error(data.error);
     allImages=data.results.flatMap(r=>r.images.map(i=>i.url||'data:image/png;base64,'+i.b64_json));
-    $('toolsResult').innerHTML=`<div style="display:grid;grid-template-columns:repeat(${xVals.length},1fr);gap:4px">`+allImages.map(u=>`<div class="img-card"><img src="${u}" onclick="showModal('${u}')"></div>`).join('')+'</div>';
+    $('toolsResult').innerHTML=`<div style="display:grid;grid-template-columns:repeat(${xVals.length},1fr);gap:4px">`+allImages.map(u=>`<div class="img-card"><img src="${escAttr(u)}" onclick="showModal('${escJs(u)}')"></div>`).join('')+'</div>';
     $('status').textContent='✅ Done';}catch(e){$('status').textContent='❌ '+e.message;}
 }
 
@@ -1606,7 +1623,7 @@ async function generateBatch(){
     try{const res=await fetch('/api/batch-file',{method:'POST',headers:getHeaders(),body:JSON.stringify({prompts,baseParams:{negative_prompt:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,backend:$('backend').value}})});
     const data=await res.json();if(data.error)throw new Error(data.error);
     allImages=data.results.flatMap(r=>r.images.map(i=>i.url||'data:image/png;base64,'+i.b64_json));
-    $('toolsResult').innerHTML=allImages.map(u=>`<div class="img-card"><img src="${u}" onclick="showModal('${u}')"></div>`).join('');
+    $('toolsResult').innerHTML=allImages.map(u=>`<div class="img-card"><img src="${escAttr(u)}" onclick="showModal('${escJs(u)}')"></div>`).join('');
     $('status').textContent='✅ Done';}catch(e){$('status').textContent='❌ '+e.message;}
 }
 
@@ -1621,7 +1638,7 @@ const ratio=i/(steps-1);const prompt=tagsA.map((t,j)=>{const tB=tagsB[j]||t;retu
 $('status').textContent=`Generating ${i+1}/${steps}...`;
 const res=await fetch('/v1/images/generations',{method:'POST',headers:getHeaders(),body:JSON.stringify({prompt,negative_prompt:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,n:1})});
 const data=await res.json();if(data.data?.[0])results.push(data.data[0].url||'data:image/png;base64,'+data.data[0].b64_json);}
-allImages=results;$('toolsResult').innerHTML=results.map(u=>`<div class="img-card"><img src="${u}" onclick="showModal('${u}')"></div>`).join('');
+allImages=results;$('toolsResult').innerHTML=results.map(u=>`<div class="img-card"><img src="${escAttr(u)}" onclick="showModal('${escJs(u)}')"></div>`).join('');
 $('status').textContent='✅ Done';}
 
 async function enhancePrompt(){
@@ -1653,7 +1670,7 @@ async function fetchLLMModels(){
         const data=await res.json();
         const models=(data.data||data.models||[]).map(m=>m.id||m.name||m).filter(m=>typeof m==='string').sort();
         if(models.length){
-            $('llmModel').innerHTML=models.map(m=>`<option value="${m}">${m}</option>`).join('');
+            $('llmModel').innerHTML=models.map(m=>`<option value="${escAttr(m)}">${escapeHtml(m)}</option>`).join('');
             if(llmSettings.model&&models.includes(llmSettings.model))$('llmModel').value=llmSettings.model;
         }else throw new Error('No models');
     }catch(e){
@@ -1707,9 +1724,9 @@ async function addToQueue(){const body={prompt:$('prompt').value,negative_prompt
 await fetch('/api/queue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});loadQueue();toast('Added to queue');}
 async function loadQueue(){const res=await fetch('/api/queue');const q=await res.json();
 $('queueCount').textContent=q.length||'';$('queueCount').style.display=q.length?'':'none';
-$('queueList').innerHTML=q.map(i=>`<div class="queue-item"><span>${i.prompt?.slice(0,50)}...</span><button class="btn-sm btn-danger" onclick="removeQueue(${i.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">Empty</p>';}
+$('queueList').innerHTML=q.map(i=>`<div class="queue-item"><span>${escapeHtml(i.prompt?.slice(0,50)||'')}...</span><button class="btn-sm btn-danger" onclick="removeQueue(${i.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">Empty</p>';}
 async function removeQueue(id){await fetch('/api/queue/'+id,{method:'DELETE'});loadQueue();}
-async function processQueue(){$('status').textContent='⏳ Processing...';const res=await fetch('/api/queue/process',{method:'POST',headers:getHeaders()});const r=await res.json();$('status').textContent=`✅ Processed ${r.length} items`;toast(`Processed ${r.length} items`);loadQueue();loadHistory();}
+async function processQueue(){$('status').textContent='⏳ Processing...';const res=await fetch('/api/queue/process',{method:'POST',headers:getHeaders()});const r=await res.json();const count=Array.isArray(r)?r.length:0;$('status').textContent=`✅ Processed ${count} items`;toast(`Processed ${count} items`);loadQueue();loadHistory();}
 
 // History
 let currentFolder=null;
@@ -1719,12 +1736,12 @@ if(search)filtered=filtered.filter(h=>h.prompt?.toLowerCase().includes(search));
 if(currentFolder)filtered=filtered.filter(h=>h.folder===currentFolder);
 const items=filtered.slice(0,50);
 const count=items.length;$('historyCount').textContent=count||'';$('historyCount').style.display=count?'':'none';
-$('historyGrid').innerHTML=items.map(h=>{const img=h.images[0];const url=img?.url||img?.thumb||'';const p=escAttr(h.prompt||'');const eu=escAttr(url);return`<div class="history-item" onclick="showModal('${eu}','${p.slice(0,100)}')" ondblclick="openLightbox('${eu}')" oncontextmenu="showContextMenu(event,'${eu}','${p.slice(0,200)}')" title="${p.slice(0,200)}"><img src="${url}"><button class="btn-sm" style="position:absolute;bottom:2px;right:2px;padding:1px 4px" onclick="event.stopPropagation();navigator.clipboard.writeText(${JSON.stringify(h.prompt||'').replace(/</g,'\\u003c')});toast('Copied!')" title="Copy prompt">📋</button></div>`;}).join('')||'<p style="color:var(--muted)">No history</p>';}
+$('historyGrid').innerHTML=items.map(h=>{const img=h.images[0];const url=img?.url||img?.thumb||'';const p=String(h.prompt||'');const pTitle=escAttr(p.slice(0,200));const pShortJs=escJs(p.slice(0,100));const pLongJs=escJs(p.slice(0,200));const urlJs=escJs(url);return`<div class="history-item" onclick="showModal('${urlJs}','${pShortJs}')" ondblclick="openLightbox('${urlJs}')" oncontextmenu="showContextMenu(event,'${urlJs}','${pLongJs}')" title="${pTitle}"><img src="${escAttr(url)}"><button class="btn-sm" style="position:absolute;bottom:2px;right:2px;padding:1px 4px" onclick="event.stopPropagation();navigator.clipboard.writeText(${JSON.stringify(h.prompt||'').replace(/</g,'\\u003c')});toast('Copied!')" title="Copy prompt">📋</button></div>`;}).join('')||'<p style="color:var(--muted)">No history</p>';}
 function clearHistory(){if(confirm('Clear all?')){localHistory=[];saveLocalHistory();loadHistory();}}
 function deleteHistoryItem(id){localHistory=localHistory.filter(h=>h.id!=id);saveLocalHistory();loadHistory();}
-function filterFolder(el,f){currentFolder=f;document.querySelectorAll('.folder-item').forEach(e=>e.classList.remove('active'));el.classList.add('active');loadHistory();}
+function filterFolder(el,f){currentFolder=f||null;document.querySelectorAll('.folder-item').forEach(e=>e.classList.remove('active'));if(el)el.classList.add('active');loadHistory();}
 function createFolder(){const name=prompt('Folder name:');if(name){localFolders.push({id:Date.now(),name});saveLocalFolders();loadFolders();}}
-function loadFolders(){$('folderList').innerHTML=localFolders.map(x=>`<span class="folder-item" onclick="filterFolder(this,'${escAttr(x.name)}')">${escAttr(x.name)}</span>`).join('');}
+function loadFolders(){$('folderList').innerHTML=localFolders.map(x=>`<span class="folder-item" onclick="filterFolder(this,'${escJs(x.name)}')">${escapeHtml(x.name)}</span>`).join('');}
 
 // Favorites/Gallery with tags
 let favoriteTags=JSON.parse(localStorage.getItem('sdproxy_fav_tags')||'{}');
@@ -1735,8 +1752,8 @@ if($('gallerySort')?.value==='oldest')filtered=filtered.reverse();
 const count=filtered.length;$('galleryCount').textContent=count||'';$('galleryCount').style.display=count?'':'none';
 allImages=filtered.map(x=>x.url);
 const allTags=[...new Set(Object.values(favoriteTags).flat())];
-$('galleryTags').innerHTML=allTags.map(t=>`<span class="tag" onclick="$('galleryTagFilter').value='${t}';loadFavorites()">${t}</span>`).join('');
-$('galleryGrid').innerHTML=filtered.map(x=>{const tags=favoriteTags[x.id]||[];const eu=escAttr(x.url);return`<div class="img-card"><img src="${x.url}" onclick="showModal('${eu}')" ondblclick="openLightbox('${eu}')" oncontextmenu="showContextMenu(event,'${eu}','')"><div class="actions"><button onclick="tagFavorite(${x.id})" class="btn-sm">🏷️</button><button onclick="removeFavorite(${x.id})" class="btn-danger btn-sm">×</button></div>${tags.length?`<div style="font-size:10px;color:var(--muted)">${tags.join(', ')}</div>`:''}</div>`;}).join('')||'<p style="color:var(--muted)">No favorites</p>';}
+$('galleryTags').innerHTML=allTags.map(t=>`<span class="tag" onclick="$('galleryTagFilter').value='${escJs(t)}';loadFavorites()">${escapeHtml(t)}</span>`).join('');
+$('galleryGrid').innerHTML=filtered.map(x=>{const tags=favoriteTags[x.id]||[];const urlJs=escJs(x.url);return`<div class="img-card"><img src="${escAttr(x.url)}" onclick="showModal('${urlJs}')" ondblclick="openLightbox('${urlJs}')" oncontextmenu="showContextMenu(event,'${urlJs}','')"><div class="actions"><button onclick="tagFavorite(${x.id})" class="btn-sm">🏷️</button><button onclick="removeFavorite(${x.id})" class="btn-danger btn-sm">×</button></div>${tags.length?`<div style="font-size:10px;color:var(--muted)">${escapeHtml(tags.join(', '))}</div>`:''}</div>`;}).join('')||'<p style="color:var(--muted)">No favorites</p>';}
 function tagFavorite(id){const current=(favoriteTags[id]||[]).join(', ');const tags=prompt('Tags (comma-separated):',current);if(tags!==null){favoriteTags[id]=tags.split(',').map(t=>t.trim()).filter(t=>t);localStorage.setItem('sdproxy_fav_tags',JSON.stringify(favoriteTags));loadFavorites();}}
 function addFavorite(url){localFavorites.unshift({id:Date.now(),url});saveLocalFavorites();loadFavorites();toast('Added to favorites');}
 function removeFavorite(id){localFavorites=localFavorites.filter(f=>f.id!=id);saveLocalFavorites();loadFavorites();}
@@ -1751,7 +1768,7 @@ const origCloseLightbox=closeLightbox;closeLightbox=()=>{stopSlideshow();$('ligh
 
 // Presets
 function loadPresets(){
-$('presetList').innerHTML=localPresets.map(x=>`<div class="preset-item" onclick='applyPreset(${JSON.stringify(x).replace(/'/g,"&apos;")})'><span>${x.name}</span><button class="btn-sm btn-danger" onclick="event.stopPropagation();deletePreset(${x.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">No presets</p>';}
+$('presetList').innerHTML=localPresets.map(x=>`<div class="preset-item" onclick='applyPreset(${JSON.stringify(x).replace(/'/g,"&apos;")})'><span>${escapeHtml(x.name)}</span><button class="btn-sm btn-danger" onclick="event.stopPropagation();deletePreset(${x.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">No presets</p>';}
 function savePreset(){const name=prompt('Preset name:');if(!name)return;const p={id:Date.now(),name,prompt:$('prompt').value,negative:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg:+$('cfg').value,sampler:$('sampler').value,scheduler:$('scheduler').value,style:$('style').value};
 localPresets.push(p);saveLocalPresets();loadPresets();}
 function applyPreset(p){$('prompt').value=p.prompt||'';$('negative').value=p.negative||'';$('width').value=p.width||512;$('height').value=p.height||768;$('steps').value=p.steps||25;$('cfg').value=p.cfg||7;if(p.sampler)$('sampler').value=p.sampler;if(p.scheduler)$('scheduler').value=p.scheduler;if(p.style)$('style').value=p.style;updatePromptTags();}
@@ -1759,7 +1776,7 @@ function deletePreset(id){localPresets=localPresets.filter(p=>p.id!=id);saveLoca
 
 // Templates
 function loadTemplates(){
-$('templateList').innerHTML=localTemplates.map(x=>`<div class="template-item" onclick="applyTemplate('${x.content.replace(/'/g,"\\'")}')"><span>${x.name}: ${x.content.slice(0,40)}...</span><button class="btn-sm btn-danger" onclick="event.stopPropagation();deleteTemplate(${x.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">No templates</p>';}
+$('templateList').innerHTML=localTemplates.map(x=>`<div class="template-item" onclick="applyTemplate('${escJs(x.content)}')"><span>${escapeHtml(x.name)}: ${escapeHtml(x.content.slice(0,40))}...</span><button class="btn-sm btn-danger" onclick="event.stopPropagation();deleteTemplate(${x.id})">×</button></div>`).join('')||'<p style="color:var(--muted)">No templates</p>';}
 function saveTemplate(){const name=$('newTemplateName').value,content=$('newTemplateContent').value;if(!name||!content)return;
 localTemplates.push({id:Date.now(),name,content});saveLocalTemplates();$('newTemplateName').value='';$('newTemplateContent').value='';loadTemplates();}
 function applyTemplate(t){$('prompt').value+=' '+t;updatePromptTags();}
@@ -1769,11 +1786,11 @@ function showTemplates(){$('templatesModal').classList.add('show');$('templatesM
 // Models
 let allLoras=[];
 async function refreshA1111Models(){try{const res=await fetch('/api/a1111/models',{headers:getHeaders()});const d=await res.json();
-$('currentModel').innerHTML=d.models.map(m=>`<option value="${m.title}">${m.model_name}</option>`).join('');
-$('currentVae').innerHTML='<option value="Automatic">Automatic</option>'+d.vaes.map(v=>`<option value="${v.model_name}">${v.model_name}</option>`).join('');
+$('currentModel').innerHTML=d.models.map(m=>`<option value="${escAttr(m.title)}">${escapeHtml(m.model_name)}</option>`).join('');
+$('currentVae').innerHTML='<option value="Automatic">Automatic</option>'+d.vaes.map(v=>`<option value="${escAttr(v.model_name)}">${escapeHtml(v.model_name)}</option>`).join('');
 allLoras=d.loras||[];renderLoras();}catch(e){alert('Error: '+e.message);}}
 function renderLoras(){const search=($('loraSearch')?.value||'').toLowerCase();
-$('loraBrowser').innerHTML=allLoras.filter(l=>!search||l.name.toLowerCase().includes(search)).map(l=>`<div class="lora-card" onclick="insertLora('${l.name}')" title="Click to add"><strong>${l.name}</strong></div>`).join('')||'<p style="color:var(--muted)">No LoRAs found. Click Refresh to load from A1111.</p>';}
+$('loraBrowser').innerHTML=allLoras.filter(l=>!search||l.name.toLowerCase().includes(search)).map(l=>`<div class="lora-card" onclick="insertLora('${escJs(l.name)}')" title="Click to add"><strong>${escapeHtml(l.name)}</strong></div>`).join('')||'<p style="color:var(--muted)">No LoRAs found. Click Refresh to load from A1111.</p>';}
 function filterLoras(){renderLoras();}
 async function refreshLoras(){await refreshA1111Models();}
 async function switchModel(){try{await fetch('/api/a1111/model',{method:'POST',headers:getHeaders(),body:JSON.stringify({model:$('currentModel').value,vae:$('currentVae').value})});$('status').textContent='✅ Model switched';}catch(e){$('status').textContent='❌ '+e.message;}}
@@ -1816,10 +1833,13 @@ if(d.pixaiModels)localStorage.setItem('pixai_models',JSON.stringify(d.pixaiModel
 if(d.pixaiLoras)localStorage.setItem('pixai_loras',JSON.stringify(d.pixaiLoras));
 alert('Imported');location.reload();}catch{alert('Invalid file');}};r.readAsText(f);}
 
-function importBatchPrompts(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
-lines.forEach(p=>addToQueueWithPrompt(p));$('batchPromptsStatus').textContent=`Added ${lines.length} prompts to queue`;};r.readAsText(f);input.value='';}
-function addToQueueWithPrompt(p){const item={prompt:p,negative:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg:+$('cfg').value,seed:-1,n:1};
-let q=JSON.parse(localStorage.getItem('sdproxy_queue')||'[]');q.push(item);localStorage.setItem('sdproxy_queue',JSON.stringify(q));loadQueue();}
+function importBatchPrompts(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=async e=>{const lines=e.target.result.split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
+let added=0;$('batchPromptsStatus').textContent='Adding...';
+for(const p of lines){try{await addToQueueWithPrompt(p);added++;}catch{}}
+$('batchPromptsStatus').textContent=`Added ${added}/${lines.length} prompts to queue`;loadQueue();};r.readAsText(f);input.value='';}
+async function addToQueueWithPrompt(p){const item={prompt:p,negative_prompt:$('negative').value,width:+$('width').value,height:+$('height').value,steps:+$('steps').value,cfg_scale:+$('cfg').value,backend:$('backend').value};
+const res=await fetch('/api/queue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});
+if(!res.ok)throw new Error('Queue add failed');}
 
 function showWildcardHelp(){toast('Wildcards: {a|b|c} = random pick | Matrix: [a|b] [c|d] = all combos | Weights: (tag:1.2) | LoRA: <lora:name:0.7>');}
 
@@ -1839,8 +1859,8 @@ if(e.key==='ArrowRight'||e.key==='k')nextImage();}
 // PixAI saved models/loras
 let pixaiModels=JSON.parse(localStorage.getItem('pixai_models')||'[]');
 let pixaiLoras=JSON.parse(localStorage.getItem('pixai_loras')||'[]');
-function renderPixaiModels(){$('pixaiSavedModels').innerHTML='<option value="">-- Select saved --</option>'+pixaiModels.map((m,i)=>`<option value="${i}">${m.name} (${m.id})</option>`).join('');}
-function renderPixaiLoras(){$('pixaiSavedLoras').innerHTML='<option value="">-- Select saved --</option>'+pixaiLoras.map((l,i)=>`<option value="${i}">${l.name} (${l.id})</option>`).join('');}
+function renderPixaiModels(){$('pixaiSavedModels').innerHTML='<option value="">-- Select saved --</option>'+pixaiModels.map((m,i)=>`<option value="${i}">${escapeHtml(m.name)} (${escapeHtml(m.id)})</option>`).join('');}
+function renderPixaiLoras(){$('pixaiSavedLoras').innerHTML='<option value="">-- Select saved --</option>'+pixaiLoras.map((l,i)=>`<option value="${i}">${escapeHtml(l.name)} (${escapeHtml(l.id)})</option>`).join('');}
 function savePixaiModel(){const id=$('pixaiModel').value,name=$('pixaiModelName').value||id;if(!id)return alert('Enter model ID');pixaiModels.push({id,name});localStorage.setItem('pixai_models',JSON.stringify(pixaiModels));renderPixaiModels();$('pixaiModelName').value='';}
 function deletePixaiModel(){const i=$('pixaiSavedModels').value;if(i==='')return;pixaiModels.splice(i,1);localStorage.setItem('pixai_models',JSON.stringify(pixaiModels));renderPixaiModels();}
 function loadPixaiModel(){const i=$('pixaiSavedModels').value;if(i==='')return;$('pixaiModel').value=pixaiModels[i].id;}
@@ -1900,5 +1920,7 @@ async function applyUpdate(){
 // Init
 if(localStorage.getItem('sdproxy_theme')==='light'){document.body.classList.add('light-theme');document.querySelector('.theme-toggle').textContent='☀️';}
 loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();loadPixaiCredits();updatePixaiCost();initNaiTags();renderComfyWorkflows();loadDraft();updateTokenCount();checkForUpdates();
+const savedTab=localStorage.getItem('sdproxy_active_tab');
+if(savedTab&&$('tab-'+savedTab))showTab(savedTab);
 </script>
 </body></html>

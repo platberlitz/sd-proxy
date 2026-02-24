@@ -56,6 +56,12 @@ const MODELS_DIR = path.join(__dirname, 'models');
 
 let queue = [], currentGeneration = null;
 
+function safeFilename(name, fallback = 'model.safetensors') {
+    const raw = String(name || '').trim();
+    const base = path.basename(raw).replace(/[^a-zA-Z0-9._-]/g, '_');
+    return base || fallback;
+}
+
 // SSE clients
 const sseClients = new Map();
 
@@ -1164,27 +1170,37 @@ app.post('/api/civitai/download', async (req, res) => {
         const { url: modelUrl, filename } = req.body;
         const sessionId = req.headers['x-session-id'];
         const localUrl = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        if (!/^https?:\/\//i.test(String(modelUrl || ''))) {
+            throw new Error('Invalid model URL');
+        }
 
         // Get model path from A1111
         const optRes = await fetch(`${localUrl}/sdapi/v1/options`);
         const options = await optRes.json();
         const modelDir = options.outdir_samples?.replace('/outputs', '/models/Stable-diffusion') || path.join(MODELS_DIR, 'checkpoints');
 
-        const filePath = path.join(modelDir, filename || 'model.safetensors');
+        fs.mkdirSync(modelDir, { recursive: true });
+        const safeName = safeFilename(filename, `model-${Date.now()}.safetensors`);
+        const filePath = path.join(modelDir, safeName);
         const response = await fetch(modelUrl);
+        if (!response.ok) throw new Error(`Download failed: ${response.status}`);
+        if (!response.body) throw new Error('Download stream unavailable');
         const fileStream = fs.createWriteStream(filePath);
 
-        const totalSize = parseInt(response.headers.get('content-length'), 10);
+        const totalSize = parseInt(response.headers.get('content-length') || '0', 10);
         let downloaded = 0;
 
         response.body.on('data', chunk => {
             downloaded += chunk.length;
-            sendProgress(sessionId, { type: 'download', progress: downloaded / totalSize, filename });
+            if (totalSize > 0) {
+                sendProgress(sessionId, { type: 'download', progress: downloaded / totalSize, filename: safeName });
+            }
         });
 
         await new Promise((resolve, reject) => {
             response.body.pipe(fileStream);
             response.body.on('error', reject);
+            fileStream.on('error', reject);
             fileStream.on('finish', resolve);
         });
 
@@ -1290,17 +1306,18 @@ app.get('/api/proxy/controlnet/model_list', async (req, res) => {
 
 // Queue endpoints
 app.get('/api/queue', (req, res) => res.json(queue));
-app.post('/api/queue', (req, res) => { queue.push({ id: Date.now(), ...req.body }); res.json({ success: true, length: queue.length }); });
+app.post('/api/queue', (req, res) => { queue.push({ id: Date.now() + Math.floor(Math.random() * 1000), ...req.body }); res.json({ success: true, length: queue.length }); });
 app.delete('/api/queue/:id', (req, res) => { queue = queue.filter(q => String(q.id) !== req.params.id); res.json({ success: true }); });
 app.post('/api/queue/process', async (req, res) => {
     if (!queue.length) return res.json({ message: 'Queue empty' });
+    const sessionId = req.headers['x-session-id'];
     const results = [];
     while (queue.length) {
         const item = queue.shift();
         try {
             const handler = backends[item.backend || 'local'];
             if (!handler) throw new Error('Unknown backend: ' + (item.backend || 'local'));
-            const result = await handler(item, req.headers);
+            const result = await handler(item, req.headers, sessionId);
             results.push({ id: item.id, success: true, data: result.data });
         } catch (e) { results.push({ id: item.id, success: false, error: e.message }); }
     }
