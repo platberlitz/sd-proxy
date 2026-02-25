@@ -1,6 +1,6 @@
 {
   "name": "sd-proxy",
-  "version": "2.0",
+  "version": "2.0.1",
   "description": "Multi-backend image generation proxy with OpenAI-compatible API",
   "main": "server.js",
   "scripts": {

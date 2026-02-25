@@ -10,14 +10,78 @@ const app = express();
 // Auth config
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin';
+const API_AUTH_REQUIRED = process.env.API_AUTH_REQUIRED !== 'false';
+const ALLOW_LOCAL_URL_OVERRIDE = process.env.ALLOW_LOCAL_URL_OVERRIDE !== 'false';
+const DEFAULT_A1111_URL = 'http://127.0.0.1:7860';
+const DEFAULT_COMFYUI_URL = 'http://127.0.0.1:8188';
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '0:0:0:0:0:0:0:1']);
+const MODEL_PROXY_ALLOWED_HOSTS = new Set(
+    String(process.env.MODEL_PROXY_ALLOWED_HOSTS || '')
+        .split(',')
+        .map(v => v.trim().toLowerCase())
+        .filter(Boolean)
+);
 
 app.use(express.json({ limit: '100mb' }));
 app.use(session({ secret: process.env.SESSION_SECRET || 'sd-proxy-secret', resave: false, saveUninitialized: false }));
 
+if (!process.env.SESSION_SECRET) {
+    console.warn('SESSION_SECRET is not set. Using default secret is insecure outside local development.');
+}
+if (!API_AUTH_REQUIRED) {
+    console.warn('API_AUTH_REQUIRED=false. /api/* endpoints are publicly accessible.');
+}
+if (!ALLOW_LOCAL_URL_OVERRIDE) {
+    console.warn('ALLOW_LOCAL_URL_OVERRIDE=false. x-local-url headers are ignored.');
+}
+
+function resolveLocalUrl(headerValue, fallbackUrl) {
+    if (!ALLOW_LOCAL_URL_OVERRIDE) return fallbackUrl;
+    const raw = String(headerValue || '').trim();
+    if (!raw) return fallbackUrl;
+    try {
+        const parsed = new URL(raw);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return fallbackUrl;
+        if (!LOOPBACK_HOSTS.has(parsed.hostname.toLowerCase())) return fallbackUrl;
+        parsed.hash = '';
+        parsed.search = '';
+        return parsed.toString().replace(/\/+$/, '');
+    } catch {
+        return fallbackUrl;
+    }
+}
+
+function isPrivateHostname(hostname) {
+    const host = String(hostname || '').toLowerCase();
+    if (!host) return true;
+    if (host === 'localhost' || host === '::1' || host === '0:0:0:0:0:0:0:1') return true;
+    if (host.endsWith('.local')) return true;
+    if (host.startsWith('127.') || host.startsWith('10.') || host.startsWith('192.168.') || host.startsWith('169.254.')) return true;
+    const m = host.match(/^172\.(\d{1,3})\./);
+    if (m) {
+        const octet = Number(m[1]);
+        if (octet >= 16 && octet <= 31) return true;
+    }
+    if (host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return true;
+    return false;
+}
+
 // Auth middleware
 function auth(req, res, next) {
     if (req.session.loggedIn) return next();
-    if (req.path === '/login' || req.path.startsWith('/api/')) return next();
+    if (req.method === 'OPTIONS') return next();
+    if (req.path === '/login' || req.path === '/logout') return next();
+    if (req.path.startsWith('/api/')) {
+        const isPublicApi =
+            req.path === '/api/session' ||
+            req.path.startsWith('/api/progress/') ||
+            req.path.startsWith('/api/logs/');
+        if (!API_AUTH_REQUIRED || isPublicApi) return next();
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Headers', '*');
+        res.header('Access-Control-Allow-Methods', '*');
+        return res.status(401).json({ error: 'Authentication required' });
+    }
     res.redirect('/login');
 }
 
@@ -142,7 +206,7 @@ const A1111_SAMPLERS = { euler_ancestral: 'Euler a', euler: 'Euler', dpmpp_2m: '
 
 const backends = {
     async local(body, headers, sessionId) {
-        const url = headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const url = resolveLocalUrl(headers['x-local-url'], DEFAULT_A1111_URL);
         const sampler = A1111_SAMPLERS[body.sampler] || body.sampler || 'DPM++ 2M';
         const samplerName = body.scheduler === 'karras' ? sampler + ' Karras' : body.scheduler === 'exponential' ? sampler + ' Exponential' : sampler;
 
@@ -269,7 +333,7 @@ const backends = {
     },
 
     async comfyui(body, headers, sessionId) {
-        const url = headers['x-local-url'] || 'http://127.0.0.1:8188';
+        const url = resolveLocalUrl(headers['x-local-url'], DEFAULT_COMFYUI_URL);
 
         // Sampler mapping
         const comfySamplerMap = {
@@ -1077,7 +1141,7 @@ const backends = {
 app.post('/api/upscale', async (req, res) => {
     try {
         const { image, scale, upscaler } = req.body;
-        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const url = resolveLocalUrl(req.headers['x-local-url'], DEFAULT_A1111_URL);
         const response = await fetch(`${url}/sdapi/v1/extra-single-image`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image, upscaling_resize: scale || 2, upscaler_1: upscaler || 'R-ESRGAN 4x+' })
@@ -1091,7 +1155,7 @@ app.post('/api/upscale', async (req, res) => {
 app.post('/api/interrogate', async (req, res) => {
     try {
         const { image, model } = req.body;
-        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const url = resolveLocalUrl(req.headers['x-local-url'], DEFAULT_A1111_URL);
         const response = await fetch(`${url}/sdapi/v1/interrogate`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image, model: model || 'clip' })
@@ -1104,7 +1168,7 @@ app.post('/api/interrogate', async (req, res) => {
 // Get A1111 progress
 app.get('/api/a1111/progress', async (req, res) => {
     try {
-        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const url = resolveLocalUrl(req.headers['x-local-url'], DEFAULT_A1111_URL);
         const response = await fetch(`${url}/sdapi/v1/progress`);
         res.json(await response.json());
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1113,7 +1177,7 @@ app.get('/api/a1111/progress', async (req, res) => {
 // Interrupt generation
 app.post('/api/interrupt', async (req, res) => {
     try {
-        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const url = resolveLocalUrl(req.headers['x-local-url'], DEFAULT_A1111_URL);
         await fetch(`${url}/sdapi/v1/interrupt`, { method: 'POST' });
         currentGeneration = null;
         res.json({ success: true });
@@ -1123,7 +1187,7 @@ app.post('/api/interrupt', async (req, res) => {
 // Get available models from A1111
 app.get('/api/a1111/models', async (req, res) => {
     try {
-        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const url = resolveLocalUrl(req.headers['x-local-url'], DEFAULT_A1111_URL);
         const [models, vaes, loras, embeddings] = await Promise.all([
             fetch(`${url}/sdapi/v1/sd-models`).then(r => r.json()),
             fetch(`${url}/sdapi/v1/sd-vae`).then(r => r.json()).catch(() => []),
@@ -1137,7 +1201,7 @@ app.get('/api/a1111/models', async (req, res) => {
 // Switch model in A1111
 app.post('/api/a1111/model', async (req, res) => {
     try {
-        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const url = resolveLocalUrl(req.headers['x-local-url'], DEFAULT_A1111_URL);
         const { model, vae } = req.body;
         const options = {};
         if (model) options.sd_model_checkpoint = model;
@@ -1153,7 +1217,7 @@ app.post('/api/a1111/model', async (req, res) => {
 // ControlNet preprocessors
 app.post('/api/controlnet/preprocess', async (req, res) => {
     try {
-        const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const url = resolveLocalUrl(req.headers['x-local-url'], DEFAULT_A1111_URL);
         const { image, module } = req.body;
         const response = await fetch(`${url}/controlnet/detect`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1169,7 +1233,7 @@ app.post('/api/civitai/download', async (req, res) => {
     try {
         const { url: modelUrl, filename } = req.body;
         const sessionId = req.headers['x-session-id'];
-        const localUrl = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+        const localUrl = resolveLocalUrl(req.headers['x-local-url'], DEFAULT_A1111_URL);
         if (!/^https?:\/\//i.test(String(modelUrl || ''))) {
             throw new Error('Invalid model URL');
         }
@@ -1293,7 +1357,7 @@ app.post('/v1/images/generations', async (req, res) => {
 
 // Proxy endpoint for A1111 ControlNet models
 app.get('/api/proxy/controlnet/model_list', async (req, res) => {
-    const url = req.headers['x-local-url'] || 'http://127.0.0.1:7860';
+    const url = resolveLocalUrl(req.headers['x-local-url'], DEFAULT_A1111_URL);
     try {
         const proxyRes = await fetch(`${url}/controlnet/model_list`);
         if (!proxyRes.ok) throw new Error(`A1111 error ${proxyRes.status}`);
@@ -1351,13 +1415,32 @@ app.post('/api/metadata', (req, res) => {
 });
 
 // Proxy for external APIs
-app.get('/proxy/models', async (req, res) => {
+app.get('/proxy/models', requireAuth, async (req, res) => {
     const { url, key } = req.query;
     if (!url) return res.status(400).json({ error: 'url required' });
+    let parsed;
     try {
+        parsed = new URL(String(url));
+    } catch {
+        return res.status(400).json({ error: 'Invalid URL' });
+    }
+    try {
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            return res.status(400).json({ error: 'Only http/https URLs are allowed' });
+        }
+        const host = parsed.hostname.toLowerCase();
+        if (MODEL_PROXY_ALLOWED_HOSTS.size > 0 && !MODEL_PROXY_ALLOWED_HOSTS.has(host)) {
+            return res.status(403).json({ error: `Host not allowed. Set MODEL_PROXY_ALLOWED_HOSTS to include ${host}` });
+        }
+        if (MODEL_PROXY_ALLOWED_HOSTS.size === 0 && isPrivateHostname(host)) {
+            return res.status(403).json({ error: 'Refusing to proxy private/local hosts without explicit MODEL_PROXY_ALLOWED_HOSTS allowlist' });
+        }
         const headers = { 'Content-Type': 'application/json' };
         if (key) headers['Authorization'] = `Bearer ${key}`;
-        const response = await fetch(url, { headers });
+        const response = await fetch(parsed.toString(), { headers });
+        if (!response.ok) {
+            return res.status(response.status).json({ error: `Upstream responded with status ${response.status}` });
+        }
         res.json(await response.json());
     } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -25,11 +25,20 @@ npm start
 - **Default credentials:** `admin` / `admin`
 - **Custom credentials:** Set `ADMIN_USER` and `ADMIN_PASS` environment variables
 - **Session security:** Set `SESSION_SECRET` for production
-- **API access:** API endpoints remain unprotected for programmatic use
+- **API access:** `/api/*` endpoints require login by default (`API_AUTH_REQUIRED=true`)
+- **Public API exceptions:** `/api/session`, `/api/progress/:sessionId`, `/api/logs/:sessionId`
+- **Legacy mode:** Set `API_AUTH_REQUIRED=false` to make `/api/*` public again (not recommended)
 
 ```bash
 # Custom credentials example
 ADMIN_USER="myuser" ADMIN_PASS="mypass" npm start
+```
+
+```bash
+# API compatibility toggles
+API_AUTH_REQUIRED=false npm start                    # legacy public /api/*
+ALLOW_LOCAL_URL_OVERRIDE=false npm start            # ignore x-local-url header entirely
+MODEL_PROXY_ALLOWED_HOSTS="api.openai.com,openrouter.ai" npm start
 ```
 
 ## Supported Backends
@@ -236,8 +245,13 @@ Real-time visibility into what's happening:
 
 **Authentication:**
 - Web dashboard protected by login (default: admin/admin)
-- API endpoints remain unprotected for programmatic access
+- `/api/*` endpoints require login by default (except session/log SSE bootstrap paths)
 - Session-based authentication with configurable credentials
+
+**Network safety defaults:**
+- `x-local-url` overrides are enabled by default, but restricted to loopback hosts only (`127.0.0.1`, `localhost`, `::1`)
+- Set `ALLOW_LOCAL_URL_OVERRIDE=false` to ignore `x-local-url` headers entirely
+- `/proxy/models` requires login and blocks private/local hosts unless explicitly allowed via `MODEL_PROXY_ALLOWED_HOSTS`
 
 **Production Setup:**
 ```bash
@@ -301,7 +315,7 @@ curl http://localhost:3001/v1/images/generations \
 | Header | Description |
 |--------|-------------|
 | `X-Backend` | Backend to use (local, gemini, novelai, etc.) |
-| `X-Local-Url` | A1111/ComfyUI URL (default: http://127.0.0.1:7860) |
+| `X-Local-Url` | Optional local target URL (loopback-only by default, e.g. `http://127.0.0.1:7860`) |
 | `X-Custom-Url` | Custom endpoint URL |
 | `X-Session-Id` | Session ID for isolated logs/progress |
 | `Authorization` | `Bearer <api_key>` |
