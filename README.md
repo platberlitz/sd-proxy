@@ -50,6 +50,7 @@ MODEL_PROXY_ALLOWED_HOSTS="api.openai.com,openrouter.ai" npm start
 | **Pollinations** | No (free) | No signup, instant use |
 | **NanoGPT** | Yes | Flux models, fast |
 | **Gemini (Nano Banana)** | Yes | Google's native image gen, reference images |
+| **Kie.ai** | Yes | Multi-model image generation (Nano Banana 2, Imagen4, Flux, GPT Image, more) |
 | **NovelAI** | Yes | Anime-focused, SMEA, variety+ |
 | **Naistera** | Yes | Simple API with presets |
 | **CivitAI** | Yes | Community models, LoRAs, ControlNet |
@@ -104,6 +105,7 @@ Each backend only shows settings it actually supports:
 | Pollinations | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
 | NanoGPT | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
 | Gemini | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| Kie.ai | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
 | NovelAI | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ | ✓ | ✗ |
 | Naistera | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
 | CivitAI | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
@@ -128,6 +130,13 @@ Each backend only shows settings it actually supports:
 - Model: Nano Banana (2.5 Flash) or Nano Banana Pro (3 Pro)
 - Aspect Ratio: 1:1, 9:16, 16:9, 4:3, 3:4
 - Supports reference images for image-to-image and style transfer
+
+**Kie.ai**
+- Models: Nano Banana, **Nano Banana 2**, Nano Banana Edit, Nano Banana Pro, Imagen4 (Fast/Standard/Ultra), Flux-2 (Pro/Flex), GPT-4o Image, GPT Image 1.5, Grok Imagine, Qwen, Seedream 4.5, Ideogram Character, Z-Image
+- Aspect Ratio: 4:3, 3:4, 16:9, 9:16, 3:2, 2:3
+- Resolution: 1K or 2K
+- Output Format: PNG or JPG
+- Supports reference images by uploading and attaching hosted URLs
 
 **NovelAI**
 - Models: V4.5 Curated/Full, V4 Curated/Full, V3 Anime, V3 Furry
