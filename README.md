@@ -132,7 +132,7 @@ Each backend only shows settings it actually supports:
 - Supports reference images for image-to-image and style transfer
 
 **Kie.ai**
-- Models: Nano Banana, **Nano Banana 2**, Nano Banana Edit, Nano Banana Pro, Imagen4 (Fast/Standard/Ultra), Flux-2 (Pro/Flex), GPT-4o Image, GPT Image 1.5, Grok Imagine, Qwen, Seedream 4.5, Ideogram Character, Z-Image
+- Models: Nano Banana, **Nano Banana 2**, Nano Banana Edit, Nano Banana Pro, Imagen4 (Fast/Standard/Ultra), Flux-2 (Pro/Flex), GPT-4o Image, GPT Image 1.5, Grok Imagine, Qwen, Seedream 4.5, Ideogram Character, Z-Image, Topaz Image Upscale, Recraft Crisp Upscale, Recraft Remove Background
 - Aspect Ratio: 4:3, 3:4, 16:9, 9:16, 3:2, 2:3
 - Resolution: 1K or 2K
 - Output Format: PNG or JPG
