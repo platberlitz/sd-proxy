@@ -588,7 +588,7 @@ const backends = {
         const opts = body.gptimage || {};
         const endpoint = resolveProviderEndpoint(headers['x-gpt-image-proxy-url'], DEFAULT_GPT_IMAGE_URL, '/v1/images/generations');
         const payload = {
-            model: opts.model || body.model || 'gpt-image-1.5',
+            model: opts.model || body.model || 'gpt-image-2',
             prompt: body.prompt,
             n: Math.min(body.n || 1, 4)
         };

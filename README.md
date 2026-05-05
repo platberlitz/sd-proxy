@@ -139,7 +139,7 @@ Each backend only shows settings it actually supports:
 - Optional reverse proxy URL. Use a base URL or full `:generateContent` endpoint.
 
 **GPT Image**
-- Models: GPT Image 1.5, GPT Image 1, GPT Image 1 Mini
+- Models: GPT Image 2, GPT Image 1.5, GPT Image 1, GPT Image 1 Mini
 - Size: Auto, 1024x1024, 1024x1536, 1536x1024
 - Quality: Auto, Low, Medium, High
 - Background: Auto, Opaque, Transparent
@@ -363,7 +363,7 @@ curl http://localhost:3001/v1/images/generations \
 ```json
 {
   "gptimage": {
-    "model": "gpt-image-1.5",
+    "model": "gpt-image-2",
     "size": "1024x1024",
     "quality": "high",
     "background": "auto"
