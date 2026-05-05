@@ -1,6 +1,7 @@
 <!DOCTYPE html><html><head>
 <title>SD Proxy</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -200,7 +201,7 @@ body[data-theme="github-dark"]{
 --focus-ring:0 0 0 2px rgba(88,166,255,.42)
 }
 body[data-theme="github-light"]{
---color-bg:#ffffff;--color-surface:#f6f8fa;--color-surface-2:#edf1f5;--color-border:#d0d7de;
+--color-bg:#f9fbfc;--color-surface:#f2f5f8;--color-surface-2:#e9eef3;--color-border:#d0d7de;
 --color-text:#24292f;--color-text-muted:#57606a;--color-accent:#0969da;--color-accent-2:#1f883d;
 --color-danger:#cf222e;--color-warning:#9a6700;--color-success:#1a7f37;
 --bg-glow-1:rgba(9,105,218,.1);--bg-glow-2:rgba(31,136,61,.08);
@@ -264,6 +265,7 @@ h4{font-size:13px;color:var(--color-text-muted)}
 .tab:hover{background:color-mix(in srgb,var(--color-surface-2) 72%,var(--color-accent));color:var(--color-text)}
 .tab:active{transform:translateY(1px)}
 .tab.active{background:var(--color-accent);color:var(--color-bg);border-color:var(--color-accent);font-weight:700}
+.tab[aria-selected="true"]{background:var(--color-accent);color:var(--color-bg);border-color:var(--color-accent);font-weight:700}
 .tab:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .tab-content{display:none}
 .tab-content.active{display:block}
@@ -273,6 +275,12 @@ input,select,textarea{width:100%;padding:8px 10px;background:var(--color-bg);bor
 input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--color-text-muted) 75%,transparent)}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--color-accent);box-shadow:var(--focus-ring)}
 textarea{min-height:58px;resize:vertical;font-family:inherit}
+.field-head,.prompt-head{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:6px 0 4px}
+.field-head label,.prompt-head label{margin:0}
+.prompt-title{display:inline-flex;gap:8px;align-items:baseline}
+.prompt-actions{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.credential-form{display:flex;gap:4px}
+.credential-form input{flex:1}
 button,.btn-action{padding:7px 12px;background:var(--color-surface-2);border:1px solid color-mix(in srgb,var(--color-border) 70%,var(--color-accent));color:var(--color-accent-2);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:600;transition:background-color .15s ease,color .15s ease,border-color .15s ease,transform .12s ease;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 button:hover,.btn-action:hover{background:color-mix(in srgb,var(--color-surface-2) 68%,var(--color-accent));color:var(--color-text)}
 button:active,.btn-action:active{transform:translateY(1px)}
@@ -353,6 +361,7 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 .collapsible::before{content:'▼';margin-right:8px;font-size:10px;display:inline-block;transition:transform .2s}
 .collapsible.collapsed::before{transform:rotate(-90deg)}
 .collapsible.collapsed+div{display:none!important}
+.collapsible:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .collapsible-content{margin-bottom:16px}
 .section-icon{margin-right:6px}
 .sticky-gen{position:sticky;bottom:0;background:color-mix(in srgb,var(--color-surface) 92%,transparent);padding:12px;margin-top:16px;border:1px solid var(--color-border);border-radius:var(--radius-md);z-index:50;backdrop-filter:blur(6px)}
@@ -367,7 +376,7 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 .lightbox img{max-width:95%;max-height:95%;object-fit:contain;cursor:grab}
 .lightbox img.dragging{cursor:grabbing}
 @media(max-width:900px){.gallery{column-count:3}.tabs{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;padding-bottom:4px}.tab{white-space:nowrap}}
-@media(max-width:768px){.container{padding-top:56px}.row-6{grid-template-columns:repeat(3,1fr)}.row-4{grid-template-columns:repeat(2,1fr)}.sticky-gen{position:relative}.top-actions{left:10px;right:10px;justify-content:flex-end}}
+@media(max-width:768px){body{font-size:14px}.container{padding-top:62px}.row-6{grid-template-columns:repeat(3,1fr)}.row-4{grid-template-columns:repeat(2,1fr)}.sticky-gen{position:relative}.top-actions{left:10px;right:10px;justify-content:flex-end}.tab,button,.btn-action,input,select{min-height:44px}.btn-sm{min-height:44px}.img-card .actions button{min-height:44px}.theme-select{min-width:0;flex:1;max-width:none}.prompt-actions{width:100%}}
 @media(max-width:600px){.gallery{column-count:2}.row-3{grid-template-columns:1fr}.row-2{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
@@ -414,7 +423,7 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 <option value="github-light">GitHub Light</option>
 </optgroup>
 </select>
-<button class="btn-sm" id="themeCycleBtn" onclick="toggleTheme()" title="Cycle theme">🎨</button>
+<button class="btn-sm" id="themeCycleBtn" onclick="toggleTheme()" title="Cycle theme" aria-label="Cycle theme">🎨</button>
 <a href="/logout" class="btn-action btn-sm">Logout</a>
 </div>
 <div class="container">
@@ -453,7 +462,7 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 <option value="nanogpt">NanoGPT</option><option value="gemini">Gemini (Nano Banana)</option><option value="novelai">NovelAI</option><option value="naistera">Naistera</option><option value="civitai">CivitAI</option><option value="pixai">PixAI</option><option value="stability">Stability AI</option>
 <option value="replicate">Replicate</option><option value="fal">Fal.ai</option><option value="together">Together AI</option><option value="kie">Kie.ai</option><option value="midjourney">Midjourney (LegNext)</option><option value="custom">Custom</option>
 </select></div>
-<div id="apiKeyRow"><label>API Key</label><div style="display:flex;gap:4px"><input type="password" id="apiKey" placeholder="If required" onkeydown="if(event.key==='Enter')fetchBackendModels()" onchange="saveSettings()" style="flex:1"><button class="btn-sm" id="fetchModelsBtn" onclick="fetchBackendModels()">Fetch Models</button></div></div>
+<div id="apiKeyRow"><label for="apiKey">API Key</label><form class="credential-form" autocomplete="off" onsubmit="fetchBackendModels();return false;"><input type="password" id="apiKey" placeholder="If required" autocomplete="off" onchange="saveSettings()"><button class="btn-sm" id="fetchModelsBtn" type="submit">Fetch Models</button></form></div>
 <div id="modelRow"><label>Model</label><div id="modelContainer"><select id="model"><option value="">Select model</option></select></div></div>
 </div>
 <div id="customEndpoint" style="display:none" class="mt"><label>Custom URL</label><input id="customUrl" placeholder="https://api.example.com/v1" onchange="saveSettings()"></div>
@@ -631,7 +640,7 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 <div><label><input type="checkbox" id="naiQuality" checked> Quality Tags</label></div>
 </div>
 <div><label><input type="checkbox" id="naiVariety"> Variety+</label></div>
-<div id="naiCostEstimate" class="mt" style="padding:6px;background:#1a2e1a;border-radius:4px;font-size:11px"></div>
+<div id="naiCostEstimate" class="mt" style="padding:6px;background:var(--color-surface-2);border-radius:4px;font-size:11px"></div>
 <div class="mt"><label>Artist/Style Tags <button class="btn-sm" onclick="randomNaiTags()" style="float:right">🎲 Random</button></label>
 <input type="text" id="naiTagSearch" placeholder="Search artists/styles..." oninput="filterNaiTags('naiTagsGrid',this.value)" class="mt">
 <div id="naiTagsGrid" class="flex mt" style="gap:4px;flex-wrap:wrap;max-height:150px;overflow-y:auto"></div></div>
@@ -829,12 +838,15 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 
 <h3 class="collapsible" onclick="toggleCollapse(this)">✏️ Prompt</h3>
 <div>
-<label>Prompt <span class="token-count" id="tokenCount">0 tokens</span><span class="flex" style="float:right;gap:4px">
+<div class="prompt-head">
+<label for="prompt" class="prompt-title">Prompt <span class="token-count" id="tokenCount">0 tokens</span></label>
+<div class="prompt-actions">
 <button class="btn-sm" onclick="enhancePrompt()">✨ Enhance</button>
 <button class="btn-sm" onclick="showTemplates()">📝 Templates</button>
 <button class="btn-sm" onclick="showPromptHistory()">📜 History</button>
 <button class="btn-sm" onclick="showWildcardHelp()">? Help</button>
-</span></label>
+</div>
+</div>
 <div style="position:relative">
 <textarea id="prompt" placeholder="masterpiece, best quality, " oninput="onPromptInput(this);updateTokenCount()" onkeydown="onPromptKeydown(event)">masterpiece, best quality, highly detailed, </textarea>
 <div id="autocomplete" class="autocomplete" style="display:none"></div>
@@ -842,14 +854,14 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 <div id="promptTags" class="mt"></div>
 
 <div id="negativeSetting">
-<label>Negative Prompt <span style="float:right"><select id="negativePreset" onchange="applyNegativePreset()" style="width:auto;padding:2px 4px;font-size:10px">
+<div class="field-head"><label for="negative">Negative Prompt</label><select id="negativePreset" onchange="applyNegativePreset()" aria-label="Negative prompt preset" style="width:auto;padding:2px 4px;font-size:10px">
 <option value="">Presets...</option>
 <option value="quality">Quality Issues</option>
 <option value="anatomy">Anatomy Issues</option>
 <option value="style">Style Issues</option>
 <option value="artifacts">Artifacts</option>
 <option value="nsfw">NSFW Filter</option>
-</select></span></label>
+</select></div>
 <textarea id="negative" rows="2">lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, blurry, deformed, ugly, duplicate, morbid, mutilated, mutation, disfigured, malformed limbs, extra limbs, fused fingers, too many fingers, long neck</textarea>
 </div>
 </div>
@@ -872,7 +884,7 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 <option value="896,1152">896×1152 (SDXL 7:9)</option>
 <option value="1152,896">1152×896 (SDXL 9:7)</option>
 </select></div>
-<div class="aspect-btns"><label>Quick</label><button onclick="setAspect('p')" title="Portrait">📱</button><button onclick="setAspect('l')" title="Landscape">🖼️</button><button onclick="setAspect('s')" title="Square">⬜</button></div>
+<div class="aspect-btns"><label>Quick</label><button onclick="setAspect('p')" title="Portrait" aria-label="Portrait size">📱</button><button onclick="setAspect('l')" title="Landscape" aria-label="Landscape size">🖼️</button><button onclick="setAspect('s')" title="Square" aria-label="Square size">⬜</button></div>
 <div id="widthSetting"><label>Width</label><input type="number" id="width" value="512" step="64" onchange="$('sizePreset').value=''"></div>
 <div id="heightSetting"><label>Height</label><input type="number" id="height" value="768" step="64" onchange="$('sizePreset').value=''"></div>
 <div id="stepsSetting"><label>Steps</label><input type="number" id="steps" value="25"></div>
@@ -930,10 +942,10 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 <button onclick="addToQueue()">+ Queue</button>
 <button onclick="generateMatrix()">Matrix</button>
 <button onclick="showABTest()">A/B</button>
-<button onclick="showBackendCompare()">🔀</button>
-<button onclick="savePreset()">💾</button>
-<button onclick="randomSeed()">🎲</button>
-<button onclick="generateSimilar()" title="Generate with slight variation">🔄</button>
+<button onclick="showBackendCompare()" title="Compare backends" aria-label="Compare backends">🔀</button>
+<button onclick="savePreset()" title="Save preset" aria-label="Save preset">💾</button>
+<button onclick="randomSeed()" title="Random seed" aria-label="Random seed">🎲</button>
+<button onclick="generateSimilar()" title="Generate with slight variation" aria-label="Generate similar">🔄</button>
 </div>
 <div id="status" style="margin-top:4px"></div>
 <div id="genTimer" style="font-size:11px;color:var(--muted)"></div>
@@ -1141,7 +1153,7 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <option value="openai">OpenAI</option>
 <option value="custom">Custom URL</option>
 </select></div>
-<div><label>API Key</label><input type="password" id="llmApiKey" placeholder="API Key" onchange="saveLLMSettings();fetchLLMModels()"></div>
+<div><label for="llmApiKey">API Key</label><form class="credential-form" autocomplete="off" onsubmit="return false;"><input type="password" id="llmApiKey" placeholder="API Key" autocomplete="off" onchange="saveLLMSettings();fetchLLMModels()"></form></div>
 <div><label>Model</label><select id="llmModel" onchange="saveLLMSettings()"></select><input id="llmModelManual" placeholder="Or type model name" style="margin-top:4px" onchange="saveLLMSettings()"></div>
 </div>
 <div id="llmCustomUrl" style="display:none" class="mt"><label>Custom URL</label><input id="llmCustomEndpoint" placeholder="https://api.example.com/v1" onchange="saveLLMSettings();fetchLLMModels()"></div>
@@ -1166,7 +1178,7 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <label class="mt">Generated Prompt</label>
 <textarea id="llmOutput" rows="4" placeholder="AI-generated prompt will appear here..."></textarea>
 
-<div id="llmChat" class="mt" style="max-height:300px;overflow-y:auto;background:#0d1a0d;padding:10px;border-radius:4px;display:none;"></div>
+<div id="llmChat" class="mt" style="max-height:300px;overflow-y:auto;background:var(--color-bg);padding:10px;border-radius:4px;display:none;"></div>
 </div>
 </div>
 
@@ -1245,7 +1257,7 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <label><input type="checkbox" id="consoleAutoScroll" checked> Auto-scroll</label>
 <button class="btn-sm" onclick="clearConsole()">Clear</button>
 </div>
-<pre id="consoleOutput" style="background:#0d1a0d;padding:10px;border-radius:4px;height:500px;overflow-y:auto;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;margin-top:10px;"></pre>
+<pre id="consoleOutput" style="background:var(--color-bg);padding:10px;border-radius:4px;height:500px;overflow-y:auto;font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace;white-space:pre-wrap;word-break:break-all;margin-top:10px;"></pre>
 </div>
 </div>
 
@@ -1271,7 +1283,7 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 </div>
 
 <h3 class="mt">Cost Tracking</h3>
-<div id="costDisplay" style="background:#1a2e1a;padding:8px;border-radius:4px"></div>
+<div id="costDisplay" style="background:var(--color-surface-2);padding:8px;border-radius:4px"></div>
 <button onclick="resetCosts()" class="btn-sm btn-danger mt">Reset</button>
 
 <h3 class="mt">Keyboard Shortcuts</h3>
@@ -1290,7 +1302,7 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <div style="display:flex;align-items:center;gap:8px">
     <span id="versionInfo" style="color:var(--muted)">Version: checking...</span>
     <button onclick="checkForUpdates()" class="btn-sm">Check for Updates</button>
-    <button id="updateBtn" onclick="applyUpdate()" class="btn-sm" style="display:none;background:#ff9800">Update &amp; Restart</button>
+    <button id="updateBtn" onclick="applyUpdate()" class="btn-sm" style="display:none;background:var(--color-warning);color:var(--color-bg)">Update &amp; Restart</button>
 </div>
 <pre id="updateChangelog" style="display:none;margin-top:8px;font-size:11px;max-height:200px;overflow-y:auto;background:var(--bg);padding:8px;border-radius:4px"></pre>
 <div id="updateStatus" style="margin-top:4px;font-size:12px;color:var(--muted)"></div>
@@ -1310,7 +1322,7 @@ Image 2<input type="file" id="compareFile2" accept="image/*" style="display:none
 <button onclick="sendToUpscale()">→ Upscale</button>
 <button onclick="sendToControlNet()">→ ControlNet</button>
 <button onclick="generateVariation()">🔄 Variation</button>
-<button onclick="toggleFavorite()">⭐</button>
+<button onclick="toggleFavorite()" title="Toggle favorite" aria-label="Toggle favorite">⭐</button>
 <button onclick="showMetadata()">📋 Info</button>
 <button onclick="nextImage()">Next →</button>
 <button onclick="closeModal()">Close</button>
@@ -1421,7 +1433,11 @@ function applyTheme(themeId,persist=true){
     const theme=THEMES.find(t=>t.id===themeId)||THEMES[0];
     document.body.dataset.theme=theme.id;
     if($('themeSelect')&&$('themeSelect').value!==theme.id)$('themeSelect').value=theme.id;
-    if($('themeCycleBtn')){$('themeCycleBtn').textContent=theme.icon;$('themeCycleBtn').title=`Cycle theme (${theme.label})`;}
+    if($('themeCycleBtn')){
+        $('themeCycleBtn').textContent=theme.icon;
+        $('themeCycleBtn').title=`Cycle theme (${theme.label})`;
+        $('themeCycleBtn').setAttribute('aria-label',`Cycle theme, current theme ${theme.label}`);
+    }
     if(persist)localStorage.setItem(THEME_KEY,theme.id);
 }
 function setTheme(themeId){applyTheme(themeId,true);}
@@ -1502,7 +1518,20 @@ function loadDraft(){const d=JSON.parse(localStorage.getItem('sdproxy_draft')||'
 $('prompt')?.addEventListener('input',()=>{clearTimeout(draftTimer);draftTimer=setTimeout(saveDraft,2000);});
 
 // Collapsible sections
-function toggleCollapse(el){el.classList.toggle('collapsed');}
+function toggleCollapse(el){
+    const collapsed=el.classList.toggle('collapsed');
+    el.setAttribute('aria-expanded',String(!collapsed));
+}
+function initCollapsibles(){
+    document.querySelectorAll('.collapsible').forEach(el=>{
+        el.setAttribute('role','button');
+        el.setAttribute('tabindex','0');
+        el.setAttribute('aria-expanded',String(!el.classList.contains('collapsed')));
+        el.addEventListener('keydown',e=>{
+            if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCollapse(el);}
+        });
+    });
+}
 
 function initNaiTags(){
 const grids=['naiTagsGrid','naisteraTagsGrid'];
@@ -1549,14 +1578,32 @@ const panel=$('tab-'+id);
 if(!panel)return;
 document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
 document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('.tab[role="tab"]').forEach(t=>t.setAttribute('aria-selected','false'));
 panel.classList.add('active');
 const clicked=tabBtn||(typeof event!=='undefined'&&event?.target?.classList?.contains('tab')?event.target:null);
-if(clicked){clicked.classList.add('active');}
+if(clicked){clicked.classList.add('active');clicked.setAttribute('aria-selected','true');}
 else{
 const fallback=[...document.querySelectorAll('.tab')].find(t=>(t.getAttribute('onclick')||'').includes(`showTab('${id}')`));
-fallback?.classList.add('active');
+if(fallback){fallback.classList.add('active');fallback.setAttribute('aria-selected','true');}
 }
 localStorage.setItem('sdproxy_active_tab',id);
+}
+function initTabsA11y(){
+    document.querySelectorAll('.tabs').forEach((group,i)=>{
+        group.setAttribute('role','tablist');
+        group.setAttribute('aria-label',i===0?'General workflows':'Local workflows');
+    });
+    document.querySelectorAll('.tab').forEach(tab=>{
+        const match=(tab.getAttribute('onclick')||'').match(/showTab\('([^']+)'/);
+        if(!match)return;
+        const id=match[1];
+        tab.setAttribute('role','tab');
+        tab.setAttribute('aria-controls','tab-'+id);
+        tab.setAttribute('aria-selected',String(tab.classList.contains('active')));
+    });
+    document.querySelectorAll('.tab-content').forEach(panel=>{
+        panel.setAttribute('role','tabpanel');
+    });
 }
 function showModal(url,info){currentImage=url;$('modalImg').src=url;$('modalInfo').textContent=info||'';$('modal').classList.add('show');currentIndex=allImages.indexOf(url);}
 function closeModal(){$('modal').classList.remove('show');}
@@ -1776,7 +1823,7 @@ const logSource=new EventSource('/api/logs/'+sessionId);
 logSource.onmessage=e=>{const d=JSON.parse(e.data);appendLog(d.message,d.level);};
 }
 
-function appendLog(msg,level='info'){const el=$('consoleOutput');if(!el)return;const time=new Date().toLocaleTimeString();const color=level==='error'?'#e94560':level==='warn'?'#f0a500':'#c8d6c8';el.innerHTML+=`<span style="color:var(--muted)">[${time}]</span> <span style="color:${color}">${escapeHtml(msg)}</span>\n`;if($('consoleAutoScroll').checked)el.scrollTop=el.scrollHeight;}
+function appendLog(msg,level='info'){const el=$('consoleOutput');if(!el)return;const time=new Date().toLocaleTimeString();const color=level==='error'?'var(--color-danger)':level==='warn'?'var(--color-warning)':'var(--color-text)';el.innerHTML+=`<span style="color:var(--muted)">[${time}]</span> <span style="color:${color}">${escapeHtml(msg)}</span>\n`;if($('consoleAutoScroll').checked)el.scrollTop=el.scrollHeight;}
 function escapeHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function clearConsole(){$('consoleOutput').innerHTML='';}
 
@@ -1847,7 +1894,7 @@ async function generate(){
 async function interruptGen(){await fetch('/api/interrupt',{method:'POST',headers:getHeaders()});$('status').textContent='⏹ Interrupted';}
 
 // Reference images
-function renderRefImages(){$('refImagesContainer').innerHTML=refImages.map((src,i)=>`<div style="position:relative;"><img src="${escAttr(src)}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;"><button onclick="removeRefImage(${i})" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;border:none;background:var(--danger);color:#fff;font-size:10px;cursor:pointer;">×</button></div>`).join('');}
+function renderRefImages(){$('refImagesContainer').innerHTML=refImages.map((src,i)=>`<div style="position:relative;"><img src="${escAttr(src)}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;"><button onclick="removeRefImage(${i})" aria-label="Remove reference image" style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;border:none;background:var(--danger);color:var(--color-bg);font-size:10px;cursor:pointer;">×</button></div>`).join('');}
 function removeRefImage(i){refImages.splice(i,1);renderRefImages();}
 function clearRefImages(){refImages=[];renderRefImages();}
 $('refImagesInput').onchange=function(){const files=Array.from(this.files);const remaining=15-refImages.length;files.slice(0,remaining).forEach(f=>{const r=new FileReader();r.onload=e=>{refImages.push(e.target.result);renderRefImages();};r.readAsDataURL(f);});this.value='';};
@@ -2289,6 +2336,8 @@ async function applyUpdate(){
 
 // Init
 initTheme();
+initTabsA11y();
+initCollapsibles();
 loadSettings();loadQueue();loadHistory();loadFavorites();loadPresets();loadTemplates();loadFolders();loadCosts();onBackendChange();updatePromptTags();loadLLMSettings();renderPixaiModels();renderPixaiLoras();loadPixaiCredits();updatePixaiCost();initNaiTags();renderComfyWorkflows();loadDraft();updateTokenCount();checkForUpdates();
 const savedTab=localStorage.getItem('sdproxy_active_tab');
 if(savedTab&&$('tab-'+savedTab))showTab(savedTab);

@@ -85,16 +85,25 @@ function auth(req, res, next) {
     res.redirect('/login');
 }
 
+// Shared app icon
+const FAVICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0b1410"/><circle cx="32" cy="32" r="20" fill="#4fd18b"/><path d="M22 38c5 4 15 4 20 0M22 27h20" stroke="#0b1410" stroke-width="5" stroke-linecap="round" fill="none"/></svg>';
+app.get('/favicon.svg', (req, res) => res.type('image/svg+xml').send(FAVICON_SVG));
+app.get('/favicon.ico', (req, res) => res.type('image/svg+xml').send(FAVICON_SVG));
+
 // Login page
 app.get('/login', (req, res) => res.send(`
 <!DOCTYPE html><html><head><title>Login - SD Proxy</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<style>*{box-sizing:border-box}body{font-family:system-ui;background:#0d1a0d;color:#c8e6c9;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.card{background:#1a2e1a;padding:2rem;border-radius:12px;width:100%;max-width:360px;border:1px solid #2d5a2d}h1{margin:0 0 1.5rem;text-align:center;color:#4caf50}input{width:100%;padding:12px;margin:8px 0;border:1px solid #2d5a2d;border-radius:6px;background:#0d1a0d;color:#c8e6c9}button{width:100%;padding:12px;background:#4caf50;border:none;border-radius:6px;color:#fff;font-size:16px;cursor:pointer;margin-top:12px}button:hover{background:#66bb6a}.error{color:#f44336;text-align:center;margin-top:8px}</style></head>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box}body{--font-ui:"Avenir Next","Segoe UI","Helvetica Neue","Trebuchet MS",sans-serif;--color-bg:#0b1410;--color-surface:#12201a;--color-surface-2:#182a23;--color-border:#2c4b3e;--color-text:#deeee2;--color-text-muted:#8eb6a1;--color-accent:#4fd18b;--color-accent-2:#8ce0b9;--color-danger:#e0626f;--focus-ring:0 0 0 2px rgba(79,209,139,.5);font-family:var(--font-ui);background:radial-gradient(900px 560px at 15% -10%,rgba(79,209,139,.18),transparent 65%),radial-gradient(850px 540px at 100% 0,rgba(239,179,102,.12),transparent 70%),var(--color-bg);color:var(--color-text);display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}.card{background:linear-gradient(180deg,color-mix(in srgb,var(--color-surface) 94%,var(--color-accent)),var(--color-surface));padding:24px;border-radius:10px;width:100%;max-width:360px;border:1px solid var(--color-border);box-shadow:0 1px 2px rgba(0,0,0,.25)}h1{margin:0 0 20px;text-align:center;color:var(--color-accent-2);font-size:20px;letter-spacing:.02em}.login-label{display:block;margin:10px 0 4px;color:var(--color-text-muted);font-size:11px;font-weight:600;letter-spacing:.02em}input{width:100%;padding:10px;background:var(--color-bg);border:1px solid var(--color-border);border-radius:6px;color:var(--color-text);font-size:13px}input::placeholder{color:color-mix(in srgb,var(--color-text-muted) 75%,transparent)}input:focus{outline:none;border-color:var(--color-accent);box-shadow:var(--focus-ring)}button{width:100%;min-height:42px;padding:10px 12px;background:var(--color-accent);border:1px solid var(--color-accent);border-radius:6px;color:var(--color-bg);font-size:13px;font-weight:700;cursor:pointer;margin-top:16px;transition:background-color .15s ease,transform .12s ease}button:hover{background:var(--color-accent-2)}button:active{transform:translateY(1px)}button:focus-visible{outline:none;box-shadow:var(--focus-ring)}.error{color:var(--color-danger);text-align:center;margin:12px 0 0;font-size:12px}@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style></head>
 <body><div class="card"><h1>🎨 SD Proxy</h1><form method="POST" action="/login">
-<input name="user" placeholder="Username" required>
-<input name="pass" type="password" placeholder="Password" required>
+<label class="login-label" for="login-user">Username</label>
+<input id="login-user" name="user" placeholder="Username" autocomplete="username" required>
+<label class="login-label" for="login-pass">Password</label>
+<input id="login-pass" name="pass" type="password" placeholder="Password" autocomplete="current-password" required>
 <button type="submit">Login</button>
-${req.query.error ? '<p class="error">Invalid credentials</p>' : ''}
+${req.query.error ? '<p class="error" role="alert">Invalid credentials</p>' : ''}
 </form></div></body></html>`));
 
 app.post('/login', express.urlencoded({ extended: true }), (req, res) => {

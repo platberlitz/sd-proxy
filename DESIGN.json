@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-05T13:28:46+08:00",
+  "title": "Design System: SD Proxy",
+  "extensions": {
+    "colorMeta": {
+      "forest-ink": {
+        "role": "neutral",
+        "displayName": "Forest Ink",
+        "canonical": "#0b1410",
+        "tonalRamp": [
+          "oklch(15% 0.025 150)",
+          "oklch(25% 0.025 150)",
+          "oklch(35% 0.025 150)",
+          "oklch(45% 0.025 150)",
+          "oklch(55% 0.025 150)",
+          "oklch(68% 0.020 150)",
+          "oklch(82% 0.014 150)",
+          "oklch(94% 0.008 150)"
+        ]
+      },
+      "deep-panel": {
+        "role": "neutral",
+        "displayName": "Deep Panel",
+        "canonical": "#12201a",
+        "tonalRamp": [
+          "oklch(16% 0.025 150)",
+          "oklch(26% 0.025 150)",
+          "oklch(36% 0.025 150)",
+          "oklch(46% 0.025 150)",
+          "oklch(56% 0.022 150)",
+          "oklch(69% 0.018 150)",
+          "oklch(83% 0.012 150)",
+          "oklch(95% 0.006 150)"
+        ]
+      },
+      "raised-panel": {
+        "role": "neutral",
+        "displayName": "Raised Panel",
+        "canonical": "#182a23",
+        "tonalRamp": [
+          "oklch(17% 0.030 150)",
+          "oklch(27% 0.030 150)",
+          "oklch(37% 0.028 150)",
+          "oklch(47% 0.026 150)",
+          "oklch(58% 0.022 150)",
+          "oklch(70% 0.018 150)",
+          "oklch(84% 0.012 150)",
+          "oklch(95% 0.006 150)"
+        ]
+      },
+      "moss-border": {
+        "role": "neutral",
+        "displayName": "Moss Border",
+        "canonical": "#2c4b3e",
+        "tonalRamp": [
+          "oklch(18% 0.035 155)",
+          "oklch(28% 0.035 155)",
+          "oklch(38% 0.033 155)",
+          "oklch(48% 0.030 155)",
+          "oklch(58% 0.026 155)",
+          "oklch(70% 0.020 155)",
+          "oklch(84% 0.014 155)",
+          "oklch(95% 0.008 155)"
+        ]
+      },
+      "mist-text": {
+        "role": "neutral",
+        "displayName": "Mist Text",
+        "canonical": "#deeee2",
+        "tonalRamp": [
+          "oklch(18% 0.018 150)",
+          "oklch(30% 0.018 150)",
+          "oklch(42% 0.018 150)",
+          "oklch(54% 0.016 150)",
+          "oklch(66% 0.014 150)",
+          "oklch(78% 0.012 150)",
+          "oklch(88% 0.010 150)",
+          "oklch(96% 0.006 150)"
+        ]
+      },
+      "sage-muted": {
+        "role": "neutral",
+        "displayName": "Sage Muted",
+        "canonical": "#8eb6a1",
+        "tonalRamp": [
+          "oklch(16% 0.030 155)",
+          "oklch(28% 0.034 155)",
+          "oklch(40% 0.038 155)",
+          "oklch(52% 0.040 155)",
+          "oklch(64% 0.036 155)",
+          "oklch(76% 0.028 155)",
+          "oklch(87% 0.018 155)",
+          "oklch(96% 0.008 155)"
+        ]
+      },
+      "studio-green": {
+        "role": "primary",
+        "displayName": "Studio Green",
+        "canonical": "#4fd18b",
+        "tonalRamp": [
+          "oklch(18% 0.060 155)",
+          "oklch(30% 0.080 155)",
+          "oklch(42% 0.100 155)",
+          "oklch(54% 0.115 155)",
+          "oklch(66% 0.120 155)",
+          "oklch(76% 0.095 155)",
+          "oklch(86% 0.055 155)",
+          "oklch(95% 0.020 155)"
+        ]
+      },
+      "mint-signal": {
+        "role": "primary",
+        "displayName": "Mint Signal",
+        "canonical": "#8ce0b9",
+        "tonalRamp": [
+          "oklch(18% 0.050 160)",
+          "oklch(30% 0.070 160)",
+          "oklch(42% 0.090 160)",
+          "oklch(54% 0.100 160)",
+          "oklch(66% 0.100 160)",
+          "oklch(78% 0.075 160)",
+          "oklch(88% 0.045 160)",
+          "oklch(96% 0.018 160)"
+        ]
+      },
+      "ember-danger": {
+        "role": "secondary",
+        "displayName": "Ember Danger",
+        "canonical": "#e0626f",
+        "tonalRamp": [
+          "oklch(18% 0.050 20)",
+          "oklch(30% 0.075 20)",
+          "oklch(42% 0.100 20)",
+          "oklch(54% 0.120 20)",
+          "oklch(66% 0.125 20)",
+          "oklch(78% 0.090 20)",
+          "oklch(88% 0.050 20)",
+          "oklch(96% 0.018 20)"
+        ]
+      },
+      "amber-warning": {
+        "role": "secondary",
+        "displayName": "Amber Warning",
+        "canonical": "#efb366",
+        "tonalRamp": [
+          "oklch(18% 0.050 75)",
+          "oklch(30% 0.070 75)",
+          "oklch(42% 0.090 75)",
+          "oklch(54% 0.105 75)",
+          "oklch(68% 0.105 75)",
+          "oklch(80% 0.075 75)",
+          "oklch(90% 0.040 75)",
+          "oklch(97% 0.014 75)"
+        ]
+      },
+      "success-mint": {
+        "role": "secondary",
+        "displayName": "Success Mint",
+        "canonical": "#5fd3a6",
+        "tonalRamp": [
+          "oklch(18% 0.055 165)",
+          "oklch(30% 0.075 165)",
+          "oklch(42% 0.095 165)",
+          "oklch(54% 0.110 165)",
+          "oklch(66% 0.110 165)",
+          "oklch(78% 0.080 165)",
+          "oklch(88% 0.045 165)",
+          "oklch(96% 0.016 165)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "App title and rare page-level anchors."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Panel headers, collapsible section labels, and feature groups."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Subsection titles and compact card labels."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Inputs, textarea content, dense settings, and default UI text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, buttons, badges, metadata, and count indicators."
+      }
+    },
+    "shadows": [
+      {
+        "name": "panel-contact",
+        "value": "0 1px 2px rgba(0,0,0,.25)",
+        "purpose": "Default card, fixed toolbar, and compact surface separation."
+      },
+      {
+        "name": "overlay-lift",
+        "value": "0 12px 30px rgba(0,0,0,.35)",
+        "purpose": "Modal imagery, autocomplete menus, context menus, and toasts."
+      }
+    ],
+    "motion": [
+      {
+        "name": "micro-state",
+        "value": "120ms to 160ms ease",
+        "purpose": "Button, tab, and field state changes."
+      },
+      {
+        "name": "reveal",
+        "value": "200ms to 300ms ease",
+        "purpose": "Collapsible indicators, toast entrance, and progress movement."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "@media (prefers-reduced-motion: reduce)",
+        "purpose": "Disables animation, transition, and smooth scrolling."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "nav-scroll",
+        "value": "900px",
+        "purpose": "Tabs become horizontally scrollable and gallery moves to three columns."
+      },
+      {
+        "name": "tablet",
+        "value": "768px",
+        "purpose": "Dense grids reduce column counts and sticky generation controls become relative."
+      },
+      {
+        "name": "mobile",
+        "value": "600px",
+        "purpose": "Gallery moves to two columns and two or three column control rows collapse."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Generation and confirm actions that must stand out inside dense controls.",
+      "html": "<button class=\"ds-btn-primary\">Generate</button>",
+      "css": ".ds-btn-primary{padding:7px 12px;background:var(--color-accent,#4fd18b);border:1px solid var(--color-accent,#4fd18b);color:var(--color-bg,#0b1410);border-radius:var(--radius-sm,6px);font:700 12px var(--font-ui,Avenir Next,Segoe UI,sans-serif);cursor:pointer;transition:background-color .15s ease,color .15s ease,transform .12s ease;display:inline-flex;align-items:center;justify-content:center}.ds-btn-primary:hover{background:var(--color-accent-2,#8ce0b9)}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:none;box-shadow:var(--focus-ring,0 0 0 2px rgba(79,209,139,.5))}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-base",
+      "description": "Default compact action button used across tools, settings, image actions, and queue rows.",
+      "html": "<button class=\"ds-btn-secondary\">Fetch Models</button>",
+      "css": ".ds-btn-secondary{padding:7px 12px;background:var(--color-surface-2,#182a23);border:1px solid color-mix(in srgb,var(--color-border,#2c4b3e) 70%,var(--color-accent,#4fd18b));color:var(--color-accent-2,#8ce0b9);border-radius:var(--radius-sm,6px);font:600 12px var(--font-ui,Avenir Next,Segoe UI,sans-serif);cursor:pointer;transition:background-color .15s ease,color .15s ease,transform .12s ease;display:inline-flex;align-items:center;justify-content:center}.ds-btn-secondary:hover{background:color-mix(in srgb,var(--color-surface-2,#182a23) 68%,var(--color-accent,#4fd18b));color:var(--color-text,#deeee2)}.ds-btn-secondary:active{transform:translateY(1px)}.ds-btn-secondary:focus-visible{outline:none;box-shadow:var(--focus-ring,0 0 0 2px rgba(79,209,139,.5))}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive or interruptive actions such as stop, delete, clear, and reset.",
+      "html": "<button class=\"ds-btn-danger\">Stop</button>",
+      "css": ".ds-btn-danger{padding:7px 12px;background:color-mix(in srgb,var(--color-danger,#e0626f) 16%,var(--color-surface-2,#182a23));border:1px solid var(--color-danger,#e0626f);color:var(--color-danger,#e0626f);border-radius:var(--radius-sm,6px);font:600 12px var(--font-ui,Avenir Next,Segoe UI,sans-serif);cursor:pointer;transition:background-color .15s ease,color .15s ease,transform .12s ease;display:inline-flex;align-items:center;justify-content:center}.ds-btn-danger:hover{background:color-mix(in srgb,var(--color-danger,#e0626f) 28%,var(--color-surface-2,#182a23));color:var(--color-text,#deeee2)}.ds-btn-danger:active{transform:translateY(1px)}.ds-btn-danger:focus-visible{outline:none;box-shadow:var(--focus-ring,0 0 0 2px rgba(79,209,139,.5))}"
+    },
+    {
+      "name": "Pill Tabs",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Two-row workflow navigation for general and local generation tools.",
+      "html": "<nav class=\"ds-tabs\"><button class=\"ds-tab ds-tab-active\">Generate</button><button class=\"ds-tab\">Prompt AI</button><button class=\"ds-tab\">History</button></nav>",
+      "css": ".ds-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:6px;background:color-mix(in srgb,var(--color-surface,#12201a) 80%,transparent);border:1px solid var(--color-border,#2c4b3e);border-radius:var(--radius-md,10px)}.ds-tab{padding:7px 12px;background:var(--color-surface-2,#182a23);border:1px solid color-mix(in srgb,var(--color-border,#2c4b3e) 80%,var(--color-accent,#4fd18b));color:var(--color-text-muted,#8eb6a1);border-radius:999px;font:600 12px var(--font-ui,Avenir Next,Segoe UI,sans-serif);line-height:1;cursor:pointer;transition:background-color .16s ease,color .16s ease,transform .12s ease}.ds-tab:hover{background:color-mix(in srgb,var(--color-surface-2,#182a23) 72%,var(--color-accent,#4fd18b));color:var(--color-text,#deeee2)}.ds-tab-active{background:var(--color-accent,#4fd18b);color:var(--color-bg,#0b1410);border-color:var(--color-accent,#4fd18b);font-weight:700}.ds-tab:focus-visible{outline:none;box-shadow:var(--focus-ring,0 0 0 2px rgba(79,209,139,.5))}"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Dark bounded field for prompts, provider URLs, model IDs, and settings.",
+      "html": "<label class=\"ds-label\">Model ID</label><input class=\"ds-input\" placeholder=\"Select model\">",
+      "css": ".ds-label{display:block;margin:6px 0 4px;color:var(--color-text-muted,#8eb6a1);font:600 11px var(--font-ui,Avenir Next,Segoe UI,sans-serif);letter-spacing:.02em}.ds-input{width:100%;padding:8px 10px;background:var(--color-bg,#0b1410);border:1px solid var(--color-border,#2c4b3e);border-radius:var(--radius-sm,6px);color:var(--color-text,#deeee2);font:400 13px var(--font-ui,Avenir Next,Segoe UI,sans-serif);transition:border-color .12s ease,box-shadow .12s ease,background-color .12s ease}.ds-input::placeholder{color:color-mix(in srgb,var(--color-text-muted,#8eb6a1) 75%,transparent)}.ds-input:focus{outline:none;border-color:var(--color-accent,#4fd18b);box-shadow:var(--focus-ring,0 0 0 2px rgba(79,209,139,.5))}"
+    },
+    {
+      "name": "Panel Card",
+      "kind": "card",
+      "refersTo": "card-panel",
+      "description": "Default grouping surface for backend controls, prompt settings, local tools, and management panels.",
+      "html": "<section class=\"ds-card\"><h3>Backend</h3><p>Provider controls stay compact and close to the generation flow.</p></section>",
+      "css": ".ds-card{background:linear-gradient(180deg,color-mix(in srgb,var(--color-surface,#12201a) 94%,var(--color-accent,#4fd18b)),var(--color-surface,#12201a));border:1px solid var(--color-border,#2c4b3e);padding:12px;border-radius:var(--radius-md,10px);box-shadow:var(--shadow-sm,0 1px 2px rgba(0,0,0,.25));color:var(--color-text,#deeee2);font:400 13px var(--font-ui,Avenir Next,Segoe UI,sans-serif)}.ds-card h3{margin:0 0 8px;color:var(--color-accent-2,#8ce0b9);font-size:14px;line-height:1.25}.ds-card p{margin:0;color:var(--color-text-muted,#8eb6a1);line-height:1.35}"
+    },
+    {
+      "name": "Tag Chip",
+      "kind": "chip",
+      "refersTo": "chip-tag",
+      "description": "Prompt tags, favorites tags, folder chips, and compact metadata markers.",
+      "html": "<button class=\"ds-chip\">cinematic lighting</button>",
+      "css": ".ds-chip{display:inline-block;padding:3px 7px;background:color-mix(in srgb,var(--color-surface-2,#182a23) 82%,var(--color-accent,#4fd18b));border:1px solid color-mix(in srgb,var(--color-border,#2c4b3e) 78%,transparent);border-radius:999px;color:var(--color-text,#deeee2);font:600 11px var(--font-ui,Avenir Next,Segoe UI,sans-serif);cursor:pointer;transition:background-color .15s ease,color .15s ease}.ds-chip:hover{background:var(--color-accent,#4fd18b);color:var(--color-bg,#0b1410)}.ds-chip:focus-visible{outline:none;box-shadow:var(--focus-ring,0 0 0 2px rgba(79,209,139,.5))}"
+    },
+    {
+      "name": "Drop Zone",
+      "kind": "custom",
+      "refersTo": "drop-zone",
+      "description": "Large file placement surface for img2img, inpaint, upscale, ControlNet, and image tools.",
+      "html": "<div class=\"ds-drop\">Drop image or click to upload</div>",
+      "css": ".ds-drop{border:2px dashed var(--color-border,#2c4b3e);border-radius:var(--radius-md,10px);padding:20px;text-align:center;color:var(--color-text-muted,#8eb6a1);cursor:pointer;background:color-mix(in srgb,var(--color-surface,#12201a) 70%,transparent);font:400 13px var(--font-ui,Avenir Next,Segoe UI,sans-serif);transition:border-color .12s ease,background-color .12s ease}.ds-drop:hover{border-color:var(--color-accent,#4fd18b);background:color-mix(in srgb,var(--color-surface-2,#182a23) 74%,var(--color-accent,#4fd18b))}.ds-drop:focus-visible{outline:none;box-shadow:var(--focus-ring,0 0 0 2px rgba(79,209,139,.5))}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Creator's Control Room",
+    "overview": "SD Proxy should feel like a compact creative command surface: dense, exact, and quiet enough for long generation sessions. The interface is built for power creators who move between prompt writing, backend selection, queue work, history recall, gallery curation, logs, and API settings without wanting the product to slow them down.\n\nThe visual system is restrained by default, using tinted dark surfaces, small type, crisp borders, pill navigation, and one clear accent color for current selection and primary action. It can support many themes, but the core behavior stays the same: controls close to the work, image output at the center, and enough structure that provider complexity reads as manageable.",
+    "keyCharacteristics": [
+      "Dense, stable control surfaces with compact spacing and predictable grids.",
+      "Restrained accent usage for primary actions, active tabs, focus, and state.",
+      "Themeable semantic tokens, not one-off colors per component.",
+      "Lightweight elevation: borders and tonal layers first, shadows only for overlay or depth.",
+      "Creative but precise copy, with labels that stay close to the task."
+    ],
+    "rules": [
+      {
+        "name": "The Signal Rarity Rule",
+        "body": "Studio Green is a task signal, not decoration. If more than one tenth of a screen is green, the screen is probably shouting.",
+        "section": "colors"
+      },
+      {
+        "name": "The Theme Token Rule",
+        "body": "New colors must enter through the semantic theme variables first. Components should consume --color-bg, --color-surface, --color-surface-2, --color-border, --color-text, --color-text-muted, --color-accent, and status tokens.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Neon Rule",
+        "body": "Do not introduce high-saturation cyan, magenta, purple, or crypto-style glow treatments. The existing theme list may include developer palettes, but SD Proxy's own visual language stays minimal and controlled.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dense Legibility Rule",
+        "body": "Keep type small, but never vague. Labels must remain close to controls, visible focus states must survive density, and explanatory prose should stay under 75 characters per line when it becomes paragraph text.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "Do not add decorative display fonts to product UI labels, buttons, fields, logs, or settings. Creative energy belongs in workflow quality and image output, not in ornamental type.",
+        "section": "typography"
+      },
+      {
+        "name": "The Border First Rule",
+        "body": "Reach for border, surface, and accent state before shadow. A dense creative tool should feel organized, not floaty.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Overlay Shadow Rule",
+        "body": "Strong shadows are reserved for layers that must cover or interrupt the workspace: modal images, menus, toasts, and autocomplete.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep expert controls close. Prefer compact sections, visible settings, and fast tab access over broad empty panels.",
+      "Do use the semantic theme tokens for new UI. New components should inherit from the current theme instead of hard-coding a palette.",
+      "Do communicate state through text, icons, and shape in addition to color.",
+      "Do preserve reduced-motion behavior. Any new animation must be disabled by the existing prefers-reduced-motion rule.",
+      "Do keep cards shallow. A card may contain controls, but avoid stacking card inside card unless it represents a real provider-specific subpanel.",
+      "Do keep generated images, prompts, backend differences, and history more prominent than decorative chrome."
+    ],
+    "donts": [
+      "Don't make SD Proxy feel like a generic SaaS dashboard.",
+      "Don't make SD Proxy feel like a toy image app.",
+      "Don't make SD Proxy feel like a crypto/neon tool.",
+      "Don't make SD Proxy feel like a corporate admin panel.",
+      "Don't make SD Proxy feel maximalist or non-minimalist.",
+      "Don't add decorative metrics, vague marketing copy, huge empty panels, loud novelty styling, or interface chrome that competes with prompts, generated images, settings, logs, and history.",
+      "Don't use gradient text, side-stripe borders, glassmorphism as default, or identical card grids as filler.",
+      "Don't use full-saturation accents on inactive states. Accent means action, selection, focus, or status."
+    ]
+  }
+}
