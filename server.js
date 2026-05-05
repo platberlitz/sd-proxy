@@ -10,10 +10,15 @@ const app = express();
 // Auth config
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin';
+const LOGIN_REQUIRED = process.env.LOGIN_REQUIRED !== 'false' && process.env.DISABLE_LOGIN !== 'true';
 const API_AUTH_REQUIRED = process.env.API_AUTH_REQUIRED !== 'false';
 const ALLOW_LOCAL_URL_OVERRIDE = process.env.ALLOW_LOCAL_URL_OVERRIDE !== 'false';
 const DEFAULT_A1111_URL = 'http://127.0.0.1:7860';
 const DEFAULT_COMFYUI_URL = 'http://127.0.0.1:8188';
+const DEFAULT_GPT_IMAGE_URL = 'https://api.openai.com/v1/images/generations';
+const DEFAULT_POLLINATIONS_IMAGE_URL = 'https://gen.pollinations.ai/v1/images/generations';
+const DEFAULT_NOVELAI_IMAGE_URL = 'https://image.novelai.net/ai/generate-image';
+const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com';
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '0:0:0:0:0:0:0:1']);
 const MODEL_PROXY_ALLOWED_HOSTS = new Set(
     String(process.env.MODEL_PROXY_ALLOWED_HOSTS || '')
@@ -27,6 +32,9 @@ app.use(session({ secret: process.env.SESSION_SECRET || 'sd-proxy-secret', resav
 
 if (!process.env.SESSION_SECRET) {
     console.warn('SESSION_SECRET is not set. Using default secret is insecure outside local development.');
+}
+if (!LOGIN_REQUIRED) {
+    console.warn('LOGIN_REQUIRED=false or DISABLE_LOGIN=true. The web UI and API routes are not login-protected.');
 }
 if (!API_AUTH_REQUIRED) {
     console.warn('API_AUTH_REQUIRED=false. /api/* endpoints are publicly accessible.');
@@ -66,8 +74,66 @@ function isPrivateHostname(hostname) {
     return false;
 }
 
+function getBearerToken(headers) {
+    const auth = String(headers.authorization || headers.Authorization || '').trim();
+    const match = auth.match(/^Bearer\s+(.+)$/i);
+    return (match ? match[1] : auth).trim();
+}
+
+function resolveProviderEndpoint(rawUrl, defaultUrl, endpointPath) {
+    const raw = String(rawUrl || '').trim();
+    if (!raw) return defaultUrl;
+
+    let parsed;
+    try {
+        parsed = new URL(raw);
+    } catch {
+        throw new Error('Invalid reverse proxy URL');
+    }
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+        throw new Error('Reverse proxy URL must use http or https');
+    }
+
+    parsed.hash = '';
+    const cleanPath = parsed.pathname.replace(/\/+$/, '');
+    const cleanEndpoint = endpointPath.replace(/\/+$/, '');
+    if (!cleanPath.endsWith(cleanEndpoint)) {
+        let suffix = cleanEndpoint.replace(/^\/+/, '');
+        const firstSegment = suffix.split('/')[0];
+        if (firstSegment && cleanPath.endsWith(`/${firstSegment}`)) {
+            suffix = suffix.slice(firstSegment.length).replace(/^\/+/, '');
+        }
+        parsed.pathname = `${cleanPath}/${suffix}`.replace(/\/{2,}/g, '/');
+    }
+    return parsed.toString();
+}
+
+function resolveGeminiEndpoint(rawUrl, model, apiKey) {
+    const endpointPath = `/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+    const url = new URL(resolveProviderEndpoint(rawUrl, `${DEFAULT_GEMINI_BASE_URL}${endpointPath}`, endpointPath));
+    if (apiKey && !url.searchParams.has('key')) url.searchParams.set('key', apiKey);
+    return url.toString();
+}
+
+function normalizeImageData(data) {
+    const rawImages = data?.data || data?.images || data?.output || [];
+    const images = Array.isArray(rawImages) ? rawImages : [rawImages];
+    return images.map(img => {
+        if (!img) return null;
+        if (typeof img === 'string') {
+            if (/^https?:\/\//i.test(img) || img.startsWith('data:')) return { url: img };
+            return { b64_json: img };
+        }
+        return {
+            url: img.url || img.image_url?.url || img.uri || img.src,
+            b64_json: img.b64_json || img.base64 || img.data
+        };
+    }).filter(img => img && (img.url || img.b64_json));
+}
+
 // Auth middleware
 function auth(req, res, next) {
+    if (!LOGIN_REQUIRED) return next();
     if (req.session.loggedIn) return next();
     if (req.method === 'OPTIONS') return next();
     if (req.path === '/login' || req.path === '/logout') return next();
@@ -91,7 +157,9 @@ app.get('/favicon.svg', (req, res) => res.type('image/svg+xml').send(FAVICON_SVG
 app.get('/favicon.ico', (req, res) => res.type('image/svg+xml').send(FAVICON_SVG));
 
 // Login page
-app.get('/login', (req, res) => res.send(`
+app.get('/login', (req, res) => {
+    if (!LOGIN_REQUIRED) return res.redirect('/');
+    res.send(`
 <!DOCTYPE html><html><head><title>Login - SD Proxy</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -104,18 +172,25 @@ app.get('/login', (req, res) => res.send(`
 <input id="login-pass" name="pass" type="password" placeholder="Password" autocomplete="current-password" required>
 <button type="submit">Login</button>
 ${req.query.error ? '<p class="error" role="alert">Invalid credentials</p>' : ''}
-</form></div></body></html>`));
+</form></div></body></html>`);
+});
 
 app.post('/login', express.urlencoded({ extended: true }), (req, res) => {
+    if (!LOGIN_REQUIRED) return res.redirect('/');
     if (req.body.user === ADMIN_USER && req.body.pass === ADMIN_PASS) {
         req.session.loggedIn = true;
         res.redirect('/');
     } else res.redirect('/login?error=1');
 });
 
-app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
+app.get('/logout', (req, res) => {
+    if (!LOGIN_REQUIRED) return res.redirect('/');
+    req.session.destroy();
+    res.redirect('/login');
+});
 
 function requireAuth(req, res, next) {
+    if (!LOGIN_REQUIRED) return next();
     if (req.session.loggedIn) return next();
     res.status(401).json({ error: 'Authentication required' });
 }
@@ -478,6 +553,63 @@ const backends = {
         return { data: [{ url }] };
     },
 
+    async pollinations_paid(body, headers, sessionId) {
+        const apiKey = getBearerToken(headers);
+        if (!apiKey) throw new Error('Pollinations (Paid) requires API key');
+
+        const payload = {
+            prompt: body.prompt,
+            model: body.model || 'flux',
+            n: 1,
+            size: `${body.width || 1024}x${body.height || 1024}`,
+            response_format: 'b64_json'
+        };
+        if (body.seed != null && +body.seed >= 0) payload.seed = +body.seed;
+        if (body.reference_images?.length) payload.image = body.reference_images;
+
+        log(sessionId, `Pollinations paid request: model=${payload.model}, size=${payload.size}`);
+
+        const res = await fetch(DEFAULT_POLLINATIONS_IMAGE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || data.error || `Pollinations error ${res.status}`);
+        const images = normalizeImageData(data);
+        if (!images.length) throw new Error(JSON.stringify(data));
+        return { data: images };
+    },
+
+    async gptimage(body, headers, sessionId) {
+        const apiKey = getBearerToken(headers);
+        if (!apiKey) throw new Error('GPT Image requires API key');
+
+        const opts = body.gptimage || {};
+        const endpoint = resolveProviderEndpoint(headers['x-gpt-image-proxy-url'], DEFAULT_GPT_IMAGE_URL, '/v1/images/generations');
+        const payload = {
+            model: opts.model || body.model || 'gpt-image-1.5',
+            prompt: body.prompt,
+            n: Math.min(body.n || 1, 4)
+        };
+        if (opts.size && opts.size !== 'auto') payload.size = opts.size;
+        if (opts.quality && opts.quality !== 'auto') payload.quality = opts.quality;
+        if (opts.background && opts.background !== 'auto') payload.background = opts.background;
+
+        log(sessionId, `GPT Image request: model=${payload.model}, endpoint=${endpoint}`);
+
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || data.error || `GPT Image error ${res.status}`);
+        const images = normalizeImageData(data);
+        if (!images.length) throw new Error(JSON.stringify(data));
+        return { data: images };
+    },
+
     async nanogpt(body, headers) {
         const apiKey = headers.authorization?.replace('Bearer ', '');
         if (!apiKey) throw new Error('NanoGPT requires API key');
@@ -490,11 +622,12 @@ const backends = {
     },
 
     async novelai(body, headers, sessionId) {
-        const apiKey = headers.authorization?.replace('Bearer ', '');
+        const apiKey = getBearerToken(headers);
         if (!apiKey) throw new Error('NovelAI requires API key');
 
         const nai = body.nai || {};
         const model = nai.model || 'nai-diffusion-4-5-curated';
+        const endpoint = resolveProviderEndpoint(headers['x-novelai-proxy-url'], DEFAULT_NOVELAI_IMAGE_URL, '/ai/generate-image');
         const params = {
             width: body.width || 832,
             height: body.height || 1216,
@@ -517,7 +650,7 @@ const backends = {
 
         log(sessionId, `NovelAI request: model=${model}, ${params.width}x${params.height}, steps=${params.steps}`);
 
-        const res = await fetch('https://image.novelai.net/ai/generate-image', {
+        const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
             body: JSON.stringify({
@@ -531,6 +664,15 @@ const backends = {
         if (!res.ok) {
             const errText = await res.text();
             throw new Error(`NovelAI error ${res.status}: ${errText}`);
+        }
+
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            const data = await res.json();
+            const images = normalizeImageData(data);
+            if (!images.length) throw new Error(JSON.stringify(data));
+            log(sessionId, `NovelAI returned ${images.length} image(s)`);
+            return { data: images };
         }
 
         // NovelAI returns a zip file with PNG images
@@ -562,11 +704,14 @@ const backends = {
     },
 
     async gemini(body, headers, sessionId) {
-        const apiKey = headers.authorization?.replace('Bearer ', '');
+        const apiKey = getBearerToken(headers);
         if (!apiKey) throw new Error('Gemini requires API key');
 
         const opts = body.gemini || {};
         const model = opts.model || 'gemini-2.5-flash-image';
+        const endpoint = resolveGeminiEndpoint(headers['x-gemini-proxy-url'], model, apiKey);
+        const reqHeaders = { 'Content-Type': 'application/json' };
+        if (headers['x-gemini-proxy-url']) reqHeaders['Authorization'] = `Bearer ${apiKey}`;
 
         // Build parts array with reference images and prompt
         const parts = [];
@@ -583,9 +728,9 @@ const backends = {
 
         log(sessionId, `Gemini request: model=${model}, prompt=${(body.prompt || '').substring(0, 50)}...`);
 
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        const res = await fetch(endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: reqHeaders,
             body: JSON.stringify({
                 contents: [{ role: 'user', parts }],
                 generationConfig: {

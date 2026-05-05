@@ -1,7 +1,7 @@
 # SD Proxy
 
 ## TL;DR
-Multi-backend image generation proxy with web UI and login protection. Supports 12+ backends (A1111, ComfyUI, NovelAI, PixAI, Naistera, etc.) with OpenAI-compatible API. Features: prompt AI, queue system, history, gallery, real-time progress, export/import.
+Multi-backend image generation proxy with web UI and login protection. Supports 15+ backends (A1111, ComfyUI, GPT Image, NovelAI, PixAI, Kie.ai, Naistera, etc.) with OpenAI-compatible API. Features: prompt AI, queue system, history, gallery, real-time progress, export/import.
 
 **Quick start:** `git clone → npm install → npm start → http://localhost:3001 → admin/admin`
 
@@ -28,6 +28,7 @@ npm start
 - **API access:** `/api/*` endpoints require login by default (`API_AUTH_REQUIRED=true`)
 - **Public API exceptions:** `/api/session`, `/api/progress/:sessionId`, `/api/logs/:sessionId`
 - **Legacy mode:** Set `API_AUTH_REQUIRED=false` to make `/api/*` public again (not recommended)
+- **No-login mode:** Set `LOGIN_REQUIRED=false` or `DISABLE_LOGIN=true` to remove the login page and make the UI/API routes public
 
 ```bash
 # Custom credentials example
@@ -37,6 +38,7 @@ ADMIN_USER="myuser" ADMIN_PASS="mypass" npm start
 ```bash
 # API compatibility toggles
 API_AUTH_REQUIRED=false npm start                    # legacy public /api/*
+LOGIN_REQUIRED=false npm start                      # no web login page
 ALLOW_LOCAL_URL_OVERRIDE=false npm start            # ignore x-local-url header entirely
 MODEL_PROXY_ALLOWED_HOSTS="api.openai.com,openrouter.ai" npm start
 ```
@@ -48,10 +50,12 @@ MODEL_PROXY_ALLOWED_HOSTS="api.openai.com,openrouter.ai" npm start
 | **Local A1111** | No | Full control, all local features |
 | **Local ComfyUI** | No | Advanced workflows |
 | **Pollinations** | No (free) | No signup, instant use |
+| **Pollinations (Paid)** | Yes | Pollinations Pollen API, OpenAI-compatible image endpoint |
+| **GPT Image** | Yes | OpenAI GPT Image with optional reverse proxy URL |
 | **NanoGPT** | Yes | Flux models, fast |
-| **Gemini (Nano Banana)** | Yes | Google's native image gen, reference images |
-| **Kie.ai** | Yes | Multi-model image generation (Nano Banana 2, Imagen4, Flux, GPT Image, more) |
-| **NovelAI** | Yes | Anime-focused, SMEA, variety+ |
+| **Gemini (Nano Banana)** | Yes | Google's native image gen, reference images, optional reverse proxy URL |
+| **Kie.ai** | Yes | Multi-model media generation (Nano Banana 2, Imagen4, Flux, GPT Image 2, Wan2.7, Qwen Image 2.0, more) |
+| **NovelAI** | Yes | Anime-focused, SMEA, variety+, optional reverse proxy URL |
 | **Naistera** | Yes | Simple API with presets |
 | **CivitAI** | Yes | Community models, LoRAs, ControlNet |
 | **PixAI** | Yes | Anime-focused, LoRA support |
@@ -103,6 +107,8 @@ Each backend only shows settings it actually supports:
 | Local A1111 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
 | ComfyUI | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
 | Pollinations | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Pollinations (Paid) | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| GPT Image | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
 | NanoGPT | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
 | Gemini | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
 | Kie.ai | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
@@ -130,9 +136,17 @@ Each backend only shows settings it actually supports:
 - Model: Nano Banana (2.5 Flash) or Nano Banana Pro (3 Pro)
 - Aspect Ratio: 1:1, 9:16, 16:9, 4:3, 3:4
 - Supports reference images for image-to-image and style transfer
+- Optional reverse proxy URL. Use a base URL or full `:generateContent` endpoint.
+
+**GPT Image**
+- Models: GPT Image 1.5, GPT Image 1, GPT Image 1 Mini
+- Size: Auto, 1024x1024, 1024x1536, 1536x1024
+- Quality: Auto, Low, Medium, High
+- Background: Auto, Opaque, Transparent
+- Optional reverse proxy URL. Use a base URL or full `/v1/images/generations` endpoint.
 
 **Kie.ai**
-- Models: Nano Banana, **Nano Banana 2**, Nano Banana Edit, Nano Banana Pro, Imagen4 (Fast/Standard/Ultra), Flux-2 (Pro/Flex), GPT-4o Image, GPT Image 1.5, Grok Imagine, Qwen, Seedream 4.5, Ideogram Character, Z-Image, Topaz Image Upscale, Recraft Crisp Upscale, Recraft Remove Background
+- Models: Nano Banana, **Nano Banana 2**, Nano Banana Edit, Nano Banana Pro, Imagen4 (Fast/Standard/Ultra), Flux-2 (Pro/Flex), GPT-4o Image, GPT Image 1.5, **GPT Image 2**, **Wan2.7 Image**, **Qwen Image 2.0**, HappyHorse-1.0 video models, Grok Imagine, Qwen, Seedream 4.5, Ideogram Character, Z-Image, Topaz Image Upscale, Recraft Crisp Upscale, Recraft Remove Background
 - Aspect Ratio: 4:3, 3:4, 16:9, 9:16, 3:2, 2:3
 - Resolution: 1K or 2K
 - Output Format: PNG or JPG
@@ -143,6 +157,7 @@ Each backend only shows settings it actually supports:
 - Samplers: Euler Ancestral, Euler, DPM++ variants, DDIM
 - SMEA/SMEA DYN, CFG Rescale, Decrisper, Quality Tags, Variety+
 - UC Presets: Low Quality + Bad Anatomy, Heavy, Light, None
+- Optional reverse proxy URL. Use a base URL or full `/ai/generate-image` endpoint.
 - **Artist/Style Tags**: 70+ artists, 50+ styles with search and 🎲 randomizer
 - **Anlas Cost Estimator**: Shows estimated cost before generating
 
@@ -326,6 +341,9 @@ curl http://localhost:3001/v1/images/generations \
 | `X-Backend` | Backend to use (local, gemini, novelai, etc.) |
 | `X-Local-Url` | Optional local target URL (loopback-only by default, e.g. `http://127.0.0.1:7860`) |
 | `X-Custom-Url` | Custom endpoint URL |
+| `X-GPT-Image-Proxy-Url` | Optional GPT Image reverse proxy base URL or `/v1/images/generations` endpoint |
+| `X-NovelAI-Proxy-Url` | Optional NovelAI reverse proxy base URL or `/ai/generate-image` endpoint |
+| `X-Gemini-Proxy-Url` | Optional Gemini/Nano Banana reverse proxy base URL or `:generateContent` endpoint |
 | `X-Session-Id` | Session ID for isolated logs/progress |
 | `Authorization` | `Bearer <api_key>` |
 
@@ -337,6 +355,18 @@ curl http://localhost:3001/v1/images/generations \
   "gemini": {
     "model": "gemini-2.5-flash-image",
     "aspect_ratio": "16:9"
+  }
+}
+```
+
+**GPT Image:**
+```json
+{
+  "gptimage": {
+    "model": "gpt-image-1.5",
+    "size": "1024x1024",
+    "quality": "high",
+    "background": "auto"
   }
 }
 ```
