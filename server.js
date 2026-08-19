@@ -538,7 +538,7 @@ const backends = {
                 }
                 if (images.length) {
                     log(sessionId, `ComfyUI: Got ${images.length} images`);
-                    return { data: images };
+                    return { data: images, seed };
                 }
             }
         }
@@ -550,7 +550,7 @@ const backends = {
         const params = new URLSearchParams({ width: body.width || 512, height: body.height || 768, seed, nologo: 'true' });
         if (body.model) params.set('model', body.model);
         const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(body.prompt)}?${params}`;
-        return { data: [{ url }] };
+        return { data: [{ url }], seed };
     },
 
     async pollinations_paid(body, headers, sessionId) {
@@ -672,7 +672,7 @@ const backends = {
             const images = normalizeImageData(data);
             if (!images.length) throw new Error(JSON.stringify(data));
             log(sessionId, `NovelAI returned ${images.length} image(s)`);
-            return { data: images };
+            return { data: images, seed: params.seed };
         }
 
         // NovelAI returns a zip file with PNG images
@@ -700,7 +700,7 @@ const backends = {
         }
 
         log(sessionId, `NovelAI returned ${images.length} image(s)`);
-        return { data: images };
+        return { data: images, seed: params.seed };
     },
 
     async gemini(body, headers, sessionId) {

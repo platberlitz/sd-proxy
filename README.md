@@ -78,7 +78,7 @@ The UI is organized into two rows of tabs:
 | **Generate** | Main text-to-image generation. Select backend, enter prompt, adjust settings. Each backend shows only its supported settings. |
 | **Prompt AI** | AI-powered prompt generation using LLMs (DeepSeek, OpenRouter, OpenAI, or custom). Generates Danbooru tags or natural descriptions from simple requests. |
 | **Queue** | Queue multiple generation jobs to process sequentially. Add prompts to queue and process all at once. |
-| **History** | Searchable history of all generations with thumbnails. Organize into folders, search by prompt. |
+| **History** | Searchable history of all generations with thumbnails. Click ↩ (or right-click) on any thumbnail to reload its prompt, backend and settings into Generate; right-click to move it into a folder or remove it. |
 | **Gallery** | Masonry-layout gallery of favorited images. Star images from results to add here. |
 | **Console** | Real-time logs showing API requests, responses, and errors. Session-isolated for multi-user setups. |
 | **Settings** | Configure local URLs, default quality tags, manage presets/templates, keyboard shortcuts, export/import data. |
@@ -115,7 +115,7 @@ Each backend only shows settings it actually supports:
 | NovelAI | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ | ✓ | ✗ |
 | Naistera | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
 | CivitAI | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
-| PixAI | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ | ✓ | ✗ |
+| PixAI | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ | ✗ |
 | Stability | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ | ✓ | ✗ |
 | Replicate | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ |
 | Fal.ai | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
@@ -211,6 +211,10 @@ If your URL doesn't end with either endpoint, `/chat/completions` is appended au
 - **Prompt Autocomplete** - 150+ Danbooru tags with Tab completion
 - **Generation Timer** - Shows elapsed time for each generation
 - **Seed Increment** - Quick +1 button for seed variations
+- **Seed Reuse** - Each result card shows the seed that produced it (A1111, ComfyUI, Pollinations, NovelAI); click it to lock that seed
+- **Live Preview** - A1111 generations stream their in-progress preview into the result area
+- **Paste / Drop Images** - Ctrl+V or drag & drop images onto the Generate tab to add reference images, or onto any local tab to fill its drop zone
+- **Backend Capability Hint** - The line under the backend selector lists what that backend accepts (API key, size, steps, CFG, seed, sampler, batch, negative, reference images)
 
 ### Prompt Tools
 - **Prompt History** - Recall last 50 prompts with one click
@@ -232,7 +236,8 @@ If your URL doesn't end with either endpoint, `/chat/completions` is appended au
 
 ### Organization
 - **Favorites with Tags** - Label favorites and filter by tag
-- **Folder Organization** - Organize history into folders
+- **Folder Organization** - Organize history into folders (right-click a thumbnail → 📁 folder; × on a folder chip deletes it)
+- **Reuse from History** - Restore prompt, negative, backend and per-backend settings from any history entry
 - **Search History** - Find past generations by prompt text
 - **Copy Prompt** - One-click copy from any history item
 - **Bulk Download** - Download all favorites at once
@@ -510,7 +515,7 @@ prompt1 BREAK prompt2    → Regional: different areas
 ### Generate Tab
 | Button | Action |
 |--------|--------|
-| Generate | Start generation |
+| Generate | Start generation (page title shows ⏳ while running; Console tab badge counts errors logged while you're elsewhere) |
 | + Queue | Add current settings to queue |
 | Matrix | Generate all wildcard combinations |
 | A/B Test | Compare two prompts |
@@ -521,6 +526,22 @@ prompt1 BREAK prompt2    → Regional: different areas
 | ✨ Enhance | AI-enhance prompt |
 | 📝 Templates | Show saved templates |
 | 📜 History | Show prompt history |
+
+### Result Cards
+| Button | Action |
+|--------|--------|
+| View | Open in modal |
+| i2i | Send to Img2Img |
+| ⭐ | Add to favorites |
+| ⬇ | Download |
+| 🌱 seed | Reuse this image's seed |
+
+### History Tab
+| Button | Action |
+|--------|--------|
+| ↩ | Reload prompt, backend & settings into Generate |
+| 📋 | Copy prompt |
+| Right-click | Reuse settings, move to folder, remove from history |
 
 ### Gallery Tab
 | Button | Action |
