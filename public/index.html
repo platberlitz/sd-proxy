@@ -414,7 +414,10 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 .section-icon{margin-right:6px}
 .sticky-gen{position:sticky;bottom:0;background:color-mix(in srgb,var(--color-surface) 92%,transparent);padding:12px;margin-top:16px;border:1px solid var(--color-border);border-radius:var(--radius-md);z-index:50;backdrop-filter:blur(6px)}
 .badge{background:var(--color-accent);color:var(--color-bg);font-size:10px;padding:1px 5px;border-radius:999px;margin-left:4px}
-.aspect-btns button{padding:4px 8px;font-size:18px}
+.aspect-btns{white-space:nowrap}
+.aspect-btns button{padding:8px 7px;font-size:13px;line-height:15px}
+#sizeSetting{grid-column:span 2}
+.flex>label{margin:0}
 .token-count{font-size:10px;color:var(--color-text-muted);float:right}
 .context-menu{position:fixed;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:4px 0;z-index:10001;min-width:150px;box-shadow:var(--shadow-md)}
 .context-menu div{padding:6px 12px;cursor:pointer}
@@ -517,10 +520,11 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 <option value="local">Local A1111</option><option value="comfyui">ComfyUI</option><option value="pollinations">Pollinations (Free)</option>
 <option value="pollinations_paid">Pollinations (Paid)</option><option value="gptimage">GPT Image</option><option value="nanogpt">NanoGPT</option><option value="gemini">Gemini (Nano Banana)</option><option value="novelai">NovelAI</option><option value="naistera">Naistera</option><option value="civitai">CivitAI</option><option value="pixai">PixAI</option><option value="stability">Stability AI</option>
 <option value="replicate">Replicate</option><option value="fal">Fal.ai</option><option value="together">Together AI</option><option value="kie">Kie.ai</option><option value="midjourney">Midjourney (LegNext)</option><option value="custom">Custom</option>
-</select><div id="backendHint" class="form-hint"></div></div>
+</select></div>
 <div id="apiKeyRow"><label for="apiKey">API Key</label><form class="credential-form" autocomplete="off" onsubmit="fetchBackendModels();return false;"><input type="password" id="apiKey" placeholder="If required" autocomplete="off" onchange="saveSettings()"><button class="btn-sm" id="fetchModelsBtn" type="submit">Fetch Models</button></form></div>
 <div id="modelRow"><label>Model</label><div id="modelContainer"><select id="model"><option value="">Select model</option></select></div></div>
 </div>
+<div id="backendHint" class="form-hint"></div>
 <div id="customEndpoint" style="display:none" class="mt"><label>Custom URL</label><input id="customUrl" placeholder="https://api.example.com/v1" onchange="saveSettings()"></div>
 <div id="gptImageSettings" style="display:none" class="mt card">
 <h3>GPT Image Settings</h3>
@@ -990,7 +994,7 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 <div id="heightSetting"><label>Height</label><input type="number" id="height" value="768" step="64" onchange="$('sizePreset').value=''"></div>
 <div id="stepsSetting"><label>Steps</label><input type="number" id="steps" value="25"></div>
 <div id="cfgSetting"><label>CFG</label><input type="number" id="cfg" value="7" step="0.5"></div>
-<div id="seedSetting"><label>Seed <button class="btn-sm" onclick="incrementSeed()" title="Increment seed">+1</button></label><input type="number" id="seed" value="-1"></div>
+<div id="seedSetting"><label for="seed">Seed</label><div class="flex" style="flex-wrap:nowrap;gap:4px"><input type="number" id="seed" value="-1" style="min-width:0"><button class="btn-sm" onclick="incrementSeed()" title="Increment seed" aria-label="Increment seed" style="flex-shrink:0">+1</button></div></div>
 </div>
 
 <div class="row" id="samplerRow">
@@ -1014,11 +1018,11 @@ code{background:var(--color-surface-2);padding:6px 8px;border-radius:var(--radiu
 <div id="batchSetting"><label>Batch</label><input type="number" id="batch" value="1" min="1" max="4"></div>
 </div>
 
-<div class="row mt" id="hiresRow">
-<div id="hiresFixSetting"><label><input type="checkbox" id="hiresFix"> Hires Fix</label></div>
-<div id="faceRestoreSetting"><label><input type="checkbox" id="faceRestore"> Face Restore</label></div>
-<div id="tilingSetting"><label><input type="checkbox" id="tiling"> Tiling/Seamless</label></div>
-<div id="hiresScaleSetting"><label>Hires Scale</label><input type="number" id="hiresScale" value="1.5" min="1" max="2" step="0.1"></div>
+<div class="flex mt" id="hiresRow" style="gap:14px">
+<label><input type="checkbox" id="hiresFix"> Hires Fix</label>
+<label for="hiresScale" style="display:inline-flex;align-items:center;gap:6px">Scale <input type="number" id="hiresScale" value="1.5" min="1" max="2" step="0.1" style="width:64px;padding:4px 6px"></label>
+<label><input type="checkbox" id="faceRestore"> Face Restore</label>
+<label><input type="checkbox" id="tiling"> Tiling/Seamless</label>
 </div>
 </div>
 
